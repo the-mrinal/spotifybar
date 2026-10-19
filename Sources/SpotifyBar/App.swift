@@ -10,4 +10,13 @@ struct SpotifyBarApp: App {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {}
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var model: AppModel!
+    private var statusItem: StatusItemController!
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        model = AppModel()
+        statusItem = StatusItemController(model: model)
+        statusItem.onSignOut = { [unowned self] in model.signOut() }
+    }
+}
