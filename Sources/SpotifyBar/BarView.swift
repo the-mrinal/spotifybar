@@ -25,7 +25,9 @@ struct BarView: View {
             content
             if state.hovering, let s = store.snapshot {
                 inlineControls(isPlaying: s.isPlaying)
-                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+                    // Fade only: the width snaps once. Animating width would resize the NSStatusItem
+                    // every frame and make every menu bar item to our left jump.
+                    .transition(.opacity.animation(reduceMotion ? nil : .easeOut(duration: 0.12)))
             }
         }
         .padding(.horizontal, 7)
@@ -38,7 +40,6 @@ struct BarView: View {
         .onTapGesture(perform: onClick)
         .fixedSize()
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { onWidth($0) }
-        .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: state.hovering)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityText)
     }

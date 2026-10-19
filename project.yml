@@ -24,8 +24,8 @@ targets:
       path: Sources/SpotifyBar/Info.plist
       properties:
         CFBundleDisplayName: SpotifyBar
-        CFBundleShortVersionString: "1.0.0"
-        CFBundleVersion: "1"
+        CFBundleShortVersionString: "1.0.1"
+        CFBundleVersion: "2"
         LSUIElement: true
         LSMinimumSystemVersion: "26.0"
         NSHumanReadableCopyright: "© 2026 Mrinal Chandra"
