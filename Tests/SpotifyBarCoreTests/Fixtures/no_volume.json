@@ -1,0 +1,6 @@
+{
+  "device": {"id": "dev4", "is_active": true, "name": "Car", "type": "Automobile", "volume_percent": null, "supports_volume": false},
+  "progress_ms": 0, "is_playing": true, "currently_playing_type": "track",
+  "item": {"id": "trk2", "name": "Drive", "duration_ms": 100000, "type": "track",
+           "artists": [{"name": "Someone"}], "album": {"name": "Road", "images": []}}
+}

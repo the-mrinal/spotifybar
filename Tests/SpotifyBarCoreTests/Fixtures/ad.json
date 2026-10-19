@@ -1,0 +1,4 @@
+{
+  "device": {"id": "dev3", "is_active": true, "name": "Living Room TV", "type": "TV", "volume_percent": 30, "supports_volume": true},
+  "progress_ms": 5000, "is_playing": true, "currently_playing_type": "ad", "item": null
+}

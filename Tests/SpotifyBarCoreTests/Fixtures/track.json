@@ -1,0 +1,14 @@
+{
+  "device": {"id": "dev1", "is_active": true, "is_private_session": false, "is_restricted": false,
+             "name": "Kitchen", "type": "Speaker", "volume_percent": 42, "supports_volume": true},
+  "shuffle_state": false, "repeat_state": "off", "timestamp": 1792413344445,
+  "progress_ms": 61000, "is_playing": true, "currently_playing_type": "track",
+  "item": {
+    "id": "trk1", "name": "Glasshouse Weather", "duration_ms": 214000, "type": "track",
+    "artists": [{"name": "Mara Lindqvist"}, {"name": "Ola Berg"}],
+    "album": {"name": "Low Light", "images": [
+      {"url": "https://i.scdn.co/image/640", "width": 640, "height": 640},
+      {"url": "https://i.scdn.co/image/300", "width": 300, "height": 300},
+      {"url": "https://i.scdn.co/image/64", "width": 64, "height": 64}]}
+  }
+}
