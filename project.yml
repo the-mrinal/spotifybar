@@ -1,0 +1,63 @@
+name: SpotifyBar
+options:
+  bundleIdPrefix: dev.mrinal
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    SWIFT_STRICT_CONCURRENCY: complete
+    ENABLE_HARDENED_RUNTIME: NO
+targets:
+  SpotifyBar:
+    type: application
+    platform: macOS
+    sources: [Sources/SpotifyBar]
+    dependencies:
+      - target: SpotifyBarCore
+    info:
+      path: Sources/SpotifyBar/Info.plist
+      properties:
+        CFBundleDisplayName: SpotifyBar
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        LSUIElement: true
+        LSMinimumSystemVersion: "26.0"
+        NSHumanReadableCopyright: "© 2026 Mrinal Chandra"
+        CFBundleURLTypes:
+          - CFBundleURLName: dev.mrinal.SpotifyBar.auth
+            CFBundleURLSchemes: [spotifybar]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.mrinal.SpotifyBar
+  SpotifyBarCore:
+    type: framework
+    platform: macOS
+    sources: [Sources/SpotifyBarCore]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.mrinal.SpotifyBarCore
+        GENERATE_INFOPLIST_FILE: YES
+  SpotifyBarCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [Tests/SpotifyBarCoreTests]
+    dependencies:
+      - target: SpotifyBarCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: dev.mrinal.SpotifyBarCoreTests
+schemes:
+  SpotifyBar:
+    build:
+      targets:
+        SpotifyBar: all
+        SpotifyBarCoreTests: [test]
+    test:
+      targets: [SpotifyBarCoreTests]
