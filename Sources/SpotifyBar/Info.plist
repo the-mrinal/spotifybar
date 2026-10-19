@@ -35,7 +35,14 @@
 	<string>26.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Mrinal Chandra</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>SpotifyBar talks to your homelab speaker service to control its volume and show its battery.</string>
 </dict>
 </plist>

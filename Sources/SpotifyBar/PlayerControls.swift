@@ -71,15 +71,16 @@ struct RoundButton: View {
 }
 
 /// Volume slider that sends at most one request per 150 ms while dragging, and the final value on release.
+/// It turns whatever the sound is actually coming out of (see `AppModel.volumeTarget`).
 struct VolumeRow: View {
-    let store: PlaybackStore
+    let model: AppModel
     @State private var value: Double = 50
     @State private var editing = false
     @State private var pending: Task<Void, Never>?
 
     var body: some View {
-        let device = store.snapshot?.device
-        let enabled = device?.supportsVolume ?? false
+        let enabled = model.volumeEnabled
+        let hasSource = model.store.snapshot != nil || model.airPlayOnly != nil
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 9) {
                 Image(systemName: "speaker.fill").font(.system(size: 11))
@@ -93,17 +94,19 @@ struct VolumeRow: View {
             }
             .foregroundStyle(.secondary)
             .disabled(!enabled)
-            if device != nil && !enabled {
+            if let caption = model.volumeCaption {
+                Text(caption).font(.system(size: 10.5)).foregroundStyle(.tertiary).lineLimit(1)
+            } else if hasSource && !enabled {
                 Text("Volume controlled on device").font(.system(size: 10.5)).foregroundStyle(.tertiary)
             }
         }
-        .onAppear { sync(device) }
-        .onChange(of: device?.volumePercent) { if !editing { sync(store.snapshot?.device) } }
+        .onAppear { sync() }
+        .onChange(of: model.volume) { if !editing { sync() } }
         .accessibilityLabel("Volume")
     }
 
-    private func sync(_ device: Device?) {
-        value = Double(device?.volumePercent ?? 50)
+    private func sync() {
+        value = Double(model.volume ?? 50)
     }
 
     private func send(now: Bool) {
@@ -112,19 +115,19 @@ struct VolumeRow: View {
         pending = Task {
             if !now { try? await Task.sleep(for: .milliseconds(150)) }
             guard !Task.isCancelled else { return }
-            await store.setVolume(target)
+            await model.setVolume(target)
         }
     }
 }
 
 struct DeviceChip: View {
-    let store: PlaybackStore
+    let model: AppModel
 
     var body: some View {
-        if let s = store.snapshot {
+        if model.store.snapshot != nil || model.airPlayOnly != nil {
             HStack(spacing: 6) {
-                Image(systemName: deviceSymbol(s.device.kind)).font(.system(size: 11))
-                Text(store.deviceDisplayName).lineLimit(1)
+                Image(systemName: model.routeSymbol).font(.system(size: 11))
+                Text(model.routeDisplayName).lineLimit(1)
             }
             .font(.system(size: 11.5, weight: .medium))
             .foregroundStyle(.secondary)

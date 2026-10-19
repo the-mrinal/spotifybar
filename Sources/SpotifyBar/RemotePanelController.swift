@@ -74,6 +74,8 @@ final class RemotePanelController {
         // Only bare keys aimed at the panel are shortcuts.
         guard windowNumber == panel.windowNumber, plain else { return false }
         let store = model.store
+        // While another app AirPlays, transport keys would start Spotify on top of it.
+        if model.airPlayOnly != nil, [49, 123, 124].contains(keyCode) { return true }
         switch keyCode {
         case 53: close()                                                       // Esc
         case 49: Task { await store.togglePlay() }                             // Space
@@ -87,8 +89,8 @@ final class RemotePanelController {
     }
 
     private func adjustVolume(_ delta: Int) {
-        guard let device = model.store.snapshot?.device, device.supportsVolume else { return }
-        let target = (device.volumePercent ?? 50) + delta
-        Task { await model.store.setVolume(target) }
+        guard model.volumeEnabled else { return }
+        let target = (model.volume ?? 50) + delta
+        Task { await model.setVolume(target) }
     }
 }

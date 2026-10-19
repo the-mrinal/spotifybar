@@ -23,7 +23,7 @@ struct BarView: View {
     var body: some View {
         HStack(spacing: 6) {
             content
-            if state.hovering, let s = store.snapshot {
+            if state.hovering, model.airPlayOnly == nil, let s = store.snapshot {
                 inlineControls(isPlaying: s.isPlaying)
                     // Fade only: the width snaps once. Animating width would resize the NSStatusItem
                     // every frame and make every menu bar item to our left jump.
@@ -45,6 +45,35 @@ struct BarView: View {
     }
 
     @ViewBuilder private var content: some View {
+        if let airplay = model.airPlayOnly {
+            ArtView(url: model.speaker.coverURL(), art: model.art, size: 18, radius: 4)
+            VStack(alignment: .leading, spacing: 1) {
+                FadingText(text: airplay.title ?? "AirPlay", font: .system(size: 10.5, weight: .semibold), maxWidth: maxTitleWidth)
+                HStack(spacing: 3) {
+                    routeGlyph(deviceSymbol: model.routeSymbol)
+                    FadingText(text: showArtist ? airplay.artist ?? model.routeDisplayName : model.routeDisplayName,
+                               font: .system(size: 9.5, weight: .medium), maxWidth: maxTitleWidth - 13)
+                }
+                .foregroundStyle(.secondary)
+            }
+        } else {
+            spotifyContent
+        }
+    }
+
+    /// The device glyph, with a small dot when the speaker's battery is low.
+    private func routeGlyph(deviceSymbol symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 8.5, weight: .medium))
+            .frame(width: 10, height: 10)
+            .overlay(alignment: .topTrailing) {
+                if model.speaker.status?.isBatteryLow == true, model.route.reachesSpeaker {
+                    Circle().fill(.orange).frame(width: 4, height: 4).offset(x: 2, y: -1)
+                }
+            }
+    }
+
+    @ViewBuilder private var spotifyContent: some View {
         switch store.phase {
         case .signedOut, .idle:
             Image(systemName: "music.note")
@@ -63,9 +92,7 @@ struct BarView: View {
             VStack(alignment: .leading, spacing: 1) {
                 FadingText(text: s.track.title, font: .system(size: 10.5, weight: .semibold), maxWidth: maxTitleWidth)
                 HStack(spacing: 3) {
-                    Image(systemName: s.isPlaying ? deviceSymbol(s.device.kind) : "pause.fill")
-                        .font(.system(size: 8.5, weight: .medium))
-                        .frame(width: 10, height: 10)
+                    routeGlyph(deviceSymbol: s.isPlaying ? model.routeSymbol : "pause.fill")
                     FadingText(text: secondLine(s), font: .system(size: 9.5, weight: .medium), maxWidth: maxTitleWidth - 13)
                 }
                 .foregroundStyle(.secondary)
@@ -76,8 +103,8 @@ struct BarView: View {
     }
 
     private func secondLine(_ s: PlayerSnapshot) -> String {
-        if !s.isPlaying { return "Paused · \(store.deviceDisplayName)" }
-        return showArtist ? s.track.artist : store.deviceDisplayName
+        if !s.isPlaying { return "Paused · \(model.routeDisplayName)" }
+        return showArtist ? s.track.artist : model.routeDisplayName
     }
 
     private func inlineControls(isPlaying: Bool) -> some View {
@@ -90,10 +117,12 @@ struct BarView: View {
     }
 
     private var accessibilityText: String {
-        switch store.phase {
+        if let a = model.airPlayOnly { return "AirPlay: \(a.title ?? "") on \(model.routeDisplayName)" }
+        let battery = model.speaker.status?.isBatteryLow == true ? ", speaker battery low" : ""
+        return switch store.phase {
         case .signedOut: "Spotify: signed out"
         case .idle: "Spotify: nothing playing"
-        case .active(let s): "Now playing: \(s.track.title) by \(s.track.artist) on \(store.deviceDisplayName)"
+        case .active(let s): "Now playing: \(s.track.title) by \(s.track.artist) on \(model.routeDisplayName)\(battery)"
         }
     }
 }

@@ -29,6 +29,9 @@ targets:
         LSUIElement: true
         LSMinimumSystemVersion: "26.0"
         NSHumanReadableCopyright: "© 2026 Mrinal Chandra"
+        NSLocalNetworkUsageDescription: "SpotifyBar talks to your homelab speaker service to control its volume and show its battery."
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
         CFBundleURLTypes:
           - CFBundleURLName: dev.mrinal.SpotifyBar.auth
             CFBundleURLSchemes: [spotifybar]

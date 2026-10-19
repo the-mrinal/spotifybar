@@ -10,16 +10,28 @@ struct RemoteView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 11) {
-            if let s = store.snapshot {
-                header(s)
+            if let airplay = model.airPlayOnly {
+                header
+                AirPlayNowPlaying(model: model, airplay: airplay, artSize: 44)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(.primary.opacity(0.06)))
+                Text("Control playback on \(AudioRoute.shortName(airplay.clientName ?? "the sender"))")
+                    .font(.system(size: 10.5)).foregroundStyle(.tertiary)
+                VolumeRow(model: model)
+                SpeakerControls(model: model)
+            } else if let s = store.snapshot {
+                header
                 nowPlaying(s)
                 ProgressRow(store: store)
                 TransportRow(store: store)
-                VolumeRow(store: store)
+                VolumeRow(model: model)
+                SpeakerControls(model: model)
                 if let error = store.lastError {
                     Text(error).font(.system(size: 11)).foregroundStyle(.red)
                 }
             } else {
+                SpeakerControls(model: model)
                 EmptyStateView(model: model, onOpenSettings: onOpenSettings)
             }
             if store.phase != .signedOut {
@@ -32,16 +44,35 @@ struct RemoteView: View {
         .glassEffect(.regular, in: .rect(cornerRadius: 18))
     }
 
-    private func header(_ s: PlayerSnapshot) -> some View {
+    private var header: some View {
         HStack(spacing: 11) {
-            Image(systemName: deviceSymbol(s.device.kind))
+            Image(systemName: model.routeSymbol)
                 .font(.system(size: 20))
                 .frame(width: 38, height: 38)
                 .background(RoundedRectangle(cornerRadius: 10).fill(.primary.opacity(0.08)))
             VStack(alignment: .leading, spacing: 1) {
                 Text("PLAYING ON").font(.system(size: 10, weight: .semibold)).kerning(0.6).foregroundStyle(.tertiary)
-                Text(store.deviceDisplayName).font(.system(size: 15, weight: .semibold)).lineLimit(1)
+                Text(headerTitle).font(.system(size: 15, weight: .semibold)).lineLimit(1)
+                if let via = headerVia {
+                    Text(via).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+                }
             }
+            Spacer(minLength: 4)
+            BatteryBadge(speaker: model.speaker)
+        }
+    }
+
+    /// The speaker when the sound reaches it, with the sender underneath; otherwise the Spotify device.
+    private var headerTitle: String {
+        guard let name = model.speaker.status?.name, model.route.reachesSpeaker else { return store.deviceDisplayName }
+        return name
+    }
+
+    private var headerVia: String? {
+        switch model.route {
+        case .spotify: nil
+        case .speakerDirect: "from the homelab's Spotify"
+        case .speakerAirPlay(let sender, _): "from \(sender) via AirPlay"
         }
     }
 
