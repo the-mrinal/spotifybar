@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mix &amp; match — Now Playing for Spotify (macOS 26)</title>
+<style>
+:root{
+  --page: oklch(0.975 0.003 260);
+  --ink: oklch(0.21 0.01 260);
+  --ink2: oklch(0.5 0.012 260);
+  --rule: oklch(0.9 0.006 260);
+  --card: oklch(1 0 0);
+  --sys: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --disp: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --blue: oklch(0.62 0.2 255);
+  --green: oklch(0.74 0.19 150);
+  --green-ink: oklch(0.2 0.04 150);
+  --island: oklch(0.15 0.005 260 / .95);
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--page);color:var(--ink);font:400 14px/1.45 var(--sys);-webkit-font-smoothing:antialiased}
+button{border:0;background:none;font:inherit;color:inherit;padding:0;cursor:default}
+svg{display:block}
+/* ---------- desktop slice ---------- */
+.slice{position:relative;width:400px;border-radius:12px;overflow:hidden;isolation:isolate;box-shadow:0 0 0 1px oklch(0 0 0 / .06)}
+.h-rest{height:200px}.h-hover{height:330px}.h-click{height:470px}
+.light{
+  --mbfg:rgba(0,0,0,.86);--mbfg2:rgba(0,0,0,.5);--mbbg:rgba(255,255,255,.22);
+  --hl:rgba(0,0,0,.11);--hls:rgba(0,0,0,.06);
+  --l1:rgba(0,0,0,.87);--l2:rgba(0,0,0,.56);--l3:rgba(0,0,0,.4);
+  --sep:rgba(0,0,0,.1);--fill:rgba(0,0,0,.07);--track:rgba(0,0,0,.14);
+  --glass:rgba(248,248,250,.66);--edge:rgba(255,255,255,.9);--rim:rgba(0,0,0,.13);
+  --btint:rgba(255,255,255,.52);--cap:rgba(0,0,0,.52);
+  background:
+    radial-gradient(70% 60% at 12% 8%, oklch(0.95 0.03 215) 0%, transparent 70%),
+    radial-gradient(60% 70% at 92% 92%, oklch(0.76 0.11 255) 0%, transparent 70%),
+    radial-gradient(50% 45% at 62% 46%, oklch(0.86 0.09 190) 0%, transparent 75%),
+    oklch(0.86 0.055 235);
+}
+.dark{
+  --mbfg:#fff;--mbfg2:rgba(255,255,255,.58);--mbbg:rgba(0,0,0,.14);
+  --hl:rgba(255,255,255,.2);--hls:rgba(255,255,255,.12);
+  --l1:rgba(255,255,255,.92);--l2:rgba(255,255,255,.6);--l3:rgba(255,255,255,.42);
+  --sep:rgba(255,255,255,.12);--fill:rgba(255,255,255,.1);--track:rgba(255,255,255,.2);
+  --glass:rgba(38,38,44,.56);--edge:rgba(255,255,255,.17);--rim:rgba(0,0,0,.55);
+  --btint:rgba(18,18,22,.48);--cap:rgba(255,255,255,.55);
+  background:
+    radial-gradient(65% 60% at 85% 10%, oklch(0.36 0.12 285) 0%, transparent 70%),
+    radial-gradient(70% 60% at 10% 95%, oklch(0.32 0.1 225) 0%, transparent 70%),
+    radial-gradient(40% 40% at 55% 55%, oklch(0.3 0.09 320) 0%, transparent 75%),
+    oklch(0.2 0.045 265);
+}
+.foot{position:absolute;left:10px;right:10px;bottom:8px;display:flex;justify-content:space-between;gap:10px;font:500 10px/1.2 var(--mono);color:var(--cap);pointer-events:none}
+.foot .md{text-transform:uppercase;letter-spacing:.08em}
+
+/* ---------- menu bar (24 pt, Tahoe: transparent) ---------- */
+.mb{position:relative;height:24px;display:flex;justify-content:flex-end;align-items:center;padding-right:6px;
+  color:var(--mbfg);background:var(--mbbg);font:500 13px/1 var(--sys);white-space:nowrap;overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 36px);mask-image:linear-gradient(90deg,transparent,#000 36px)}
+.mb-row{position:absolute;right:6px;top:0;height:24px;display:flex;align-items:center}
+.mb-row>*{flex:none}
+.sx{width:30px;height:22px;display:grid;place-items:center}
+.sx svg{width:16px;height:16px}
+.sx.bat{width:38px}.sx.bat svg{width:26px;height:13px}
+.clock{padding:0 8px 0 6px;font-variant-numeric:tabular-nums}
+.ours{height:22px;display:flex;align-items:center;gap:6px;padding:0 7px;margin:0 2px;border-radius:7px}
+.ours.on{background:var(--hl)}
+.ours.hov{background:var(--hls)}
+.strips{padding:14px 0 0;display:grid;gap:10px}
+.cap{display:block;font:500 10px/1 var(--mono);color:var(--cap);padding:0 12px 5px}
+
+/* ---------- placeholder art ---------- */
+.art{display:block;flex:none;width:var(--s,16px);height:var(--s,16px);border-radius:var(--r,4px);box-shadow:inset 0 0 0 .5px rgba(0,0,0,.12)}
+.art1{background:
+  radial-gradient(circle at 30% 34%, oklch(0.92 0.12 85) 0 17%, oklch(0.92 0.12 85 / 0) 18%),
+  linear-gradient(170deg, oklch(0.75 0.16 48) 0%, oklch(0.57 0.2 22) 42%, oklch(0.33 0.13 310) 100%)}
+.art2{background:
+  repeating-linear-gradient(115deg, oklch(1 0 0 / .16) 0 2px, transparent 2px 7px),
+  linear-gradient(150deg, oklch(0.8 0.11 185), oklch(0.52 0.15 245) 60%, oklch(0.32 0.1 272))}
+.s16{--s:16px;--r:4px}.s18{--s:18px;--r:4.5px}
+.paused .art{filter:grayscale(1);opacity:.45}
+.pz{display:grid;place-items:center;filter:none!important;opacity:1!important;box-shadow:inset 0 0 0 20px rgba(0,0,0,.42)}
+.pz svg{width:8px;height:8px;color:#fff}
+
+/* A — marquee title */
+.mq{display:block;max-width:132px;overflow:hidden;white-space:nowrap}
+.mq.run{-webkit-mask-image:linear-gradient(90deg,transparent,#000 6px,#000 calc(100% - 14px),transparent);mask-image:linear-gradient(90deg,transparent,#000 6px,#000 calc(100% - 14px),transparent)}
+.mq-in{display:inline-flex;gap:28px}
+.mq.run .mq-in{animation:marq 16s linear infinite}
+@keyframes marq{0%,14%{transform:translateX(0)}100%{transform:translateX(calc(-50% - 14px))}}
+.paused .mq{color:var(--mbfg2)}
+
+/* B — title · artist */
+.b-txt{max-width:156px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dim{color:var(--mbfg2)}
+.paused .b-txt{color:var(--mbfg2)}
+
+/* C — ring */
+.ring{position:relative;width:20px;height:20px}
+.ring svg{position:absolute;inset:0;width:20px;height:20px;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke:var(--mbfg);stroke-width:1.8;stroke-linecap:round}
+.ring .trk{opacity:.22}
+.ring .art{position:absolute;inset:3.5px;--s:13px;--r:50%}
+.paused .ring .prg{opacity:.4}
+.ring .pz{border-radius:50%}
+.ring .pz svg{width:6px;height:6px}
+.ours.isl{background:var(--island);--mbfg:#fff;--mbfg2:rgba(255,255,255,.6)}
+
+/* D — stacked two-line */
+.stk{display:flex;flex-direction:column;justify-content:center;gap:1px;max-width:112px;min-width:0}
+.stk b{font:600 10.5px/11px var(--sys);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.005em}
+.stk span{display:flex;align-items:center;gap:3px;font:500 9.5px/10px var(--sys);color:var(--mbfg2);white-space:nowrap;overflow:hidden}
+.stk .dv{width:10px;height:10px;flex:none}
+.stk b.fade{text-overflow:clip;-webkit-mask-image:linear-gradient(90deg,#000 78%,transparent);mask-image:linear-gradient(90deg,#000 78%,transparent)}
+.inl{display:flex;margin-left:2px}
+.inl button{width:22px;height:22px;display:grid;place-items:center;border-radius:6px;color:var(--mbfg)}
+.inl button svg{width:12px;height:12px}
+.inl button.on{background:var(--hl)}
+
+/* ---------- surfaces ---------- */
+.pop{position:absolute;top:29px;color:var(--l1);font-family:var(--sys)}
+.glass{background:var(--glass);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);
+  box-shadow:0 0 0 .5px var(--rim),inset 0 .5px 0 var(--edge),inset 0 0 0 .5px color-mix(in srgb,var(--edge) 40%,transparent),0 16px 40px -8px rgba(0,0,0,.3),0 2px 6px rgba(0,0,0,.08)}
+.meta{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}
+.meta>div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-title{font:600 13px/16px var(--sys);letter-spacing:-.005em}
+.t-title.lg{font-size:15px;line-height:19px;letter-spacing:-.01em}
+.t-sub{font:400 12px/15px var(--sys);color:var(--l2)}
+.t-ter{font:400 11px/14px var(--sys);color:var(--l2)}
+.up{font:600 10px/12px var(--sys);text-transform:uppercase;letter-spacing:.06em;color:var(--l3)}
+.prog{display:flex;align-items:center;gap:8px}
+.bar{position:relative;flex:1;height:4px;border-radius:2px;background:var(--track)}
+.bar>i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--l1)}
+.tm{font:500 10.5px/1 var(--sys);font-variant-numeric:tabular-nums;color:var(--l2);min-width:27px}
+.tm.r{text-align:right}
+.vol{display:flex;align-items:center;gap:9px;color:var(--l2)}
+.vol>svg{width:14px;height:14px;flex:none}
+.vol .bar{height:5px}
+.knob{position:absolute;top:50%;width:22px;height:14px;border-radius:7px;transform:translate(-50%,-50%);background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 1px 4px rgba(0,0,0,.28)}
+.dev{display:flex;align-items:center;gap:6px;font:500 11.5px/1 var(--sys);color:var(--l2)}
+.dev svg{width:14px;height:14px;flex:none}
+.chip{display:inline-flex;width:max-content;padding:4px 9px 4px 7px;border-radius:999px;background:var(--fill)}
+.chip .chev{width:9px;height:9px}
+.ctl3{display:flex;justify-content:center;align-items:center;gap:18px}
+.tb{width:32px;height:32px;display:grid;place-items:center;border-radius:50%;color:var(--l1)}
+.tb svg{width:18px;height:18px}
+.tb.lg{width:40px;height:40px;background:var(--fill)}
+.tb.lg svg{width:20px;height:20px}
+.sep{height:1px;background:var(--sep);margin:5px 10px}
+.open{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 13px 0 11px;border-radius:999px;background:var(--green);color:var(--green-ink);font:600 12.5px/1 var(--sys);
+  box-shadow:inset 0 .5px 0 rgba(255,255,255,.45),0 1px 2px rgba(0,0,0,.18),0 4px 10px -2px oklch(0.74 0.19 150 / .45)}
+.open svg{width:14px;height:14px}
+.eq{display:flex;gap:2px;align-items:flex-end;height:14px;flex:none}
+.eq i{width:3px;height:100%;border-radius:1.5px;background:var(--green);transform-origin:bottom;animation:eq .9s ease-in-out infinite alternate}
+.eq i:nth-child(2){animation-delay:-.3s}.eq i:nth-child(3){animation-delay:-.6s}.eq i:nth-child(4){animation-delay:-.15s}
+@keyframes eq{0%{transform:scaleY(.25)}100%{transform:scaleY(1)}}
+.cursor{position:absolute;z-index:5;pointer-events:none;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35))}
+
+/* A — compact hover + NSMenu */
+.acard{width:264px;border-radius:14px;padding:12px;display:grid;gap:10px}
+.ac-top{display:flex;gap:11px;align-items:center}
+.menu{top:27px;width:268px;border-radius:12px;padding:5px}
+.mv{padding:6px 9px}
+.mh{display:flex;gap:10px;align-items:center}
+.mi{height:24px;display:flex;align-items:center;gap:8px;padding:0 9px;border-radius:7px;font:400 13px/1 var(--sys)}
+.mi>svg{width:15px;height:15px;flex:none;color:var(--l2)}
+.mi .kb{margin-left:auto;color:var(--l3);font-size:12.5px}
+.mi svg.kb{width:10px;height:10px}
+.mi .sp{width:15px;flex:none}
+.mi.hl{background:var(--blue);color:#fff}
+.mi.hl>svg,.mi.hl .kb{color:rgba(255,255,255,.85)}
+
+/* B — art-tinted glass */
+.bcard{width:320px;border-radius:22px;overflow:hidden}
+.blurart{position:absolute;inset:-40px;filter:blur(36px) saturate(1.5);opacity:.95}
+.tint{position:absolute;inset:0;background:var(--btint)}
+.bc-in{position:relative;padding:14px;display:grid;gap:12px}
+.bc-top{display:flex;gap:13px;align-items:flex-start}
+.bc-top .art{box-shadow:0 6px 18px -4px rgba(0,0,0,.45),inset 0 0 0 .5px rgba(0,0,0,.15)}
+.bc-top .meta{padding-top:4px}
+.bc-top .chip{margin-top:9px}
+.pin{position:absolute;top:12px;right:13px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:var(--fill);color:var(--l1)}
+.pin svg{width:12px;height:12px}
+.bc-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:10px;border-top:1px solid var(--sep)}
+.kh{font:500 10.5px/1.35 var(--sys);color:var(--l2)}
+.kh kbd{font:600 10px/1 var(--sys);padding:2px 4px;border-radius:4px;background:var(--fill);color:var(--l1)}
+
+/* C — island */
+.island{top:30px;background:var(--island);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-radius:26px;
+  --l1:#fff;--l2:rgba(255,255,255,.62);--l3:rgba(255,255,255,.42);--track:rgba(255,255,255,.22);--fill:rgba(255,255,255,.13);--sep:rgba(255,255,255,.12);
+  box-shadow:0 0 0 .5px rgba(255,255,255,.1),0 20px 44px -10px rgba(0,0,0,.55)}
+.neck{position:absolute;top:22px;width:24px;height:10px;background:var(--island)}
+.ih{width:300px;padding:12px 16px 14px;display:grid;gap:11px}
+.ih-top,.ic-top{display:flex;gap:11px;align-items:center}
+.ih-foot{display:flex;justify-content:space-between;align-items:center}
+.ic{width:336px;padding:18px 18px 16px;border-radius:30px;display:grid;gap:13px}
+.ic .tb.lg{background:rgba(255,255,255,.14)}
+.ic-foot{display:flex;justify-content:space-between;align-items:center;padding-top:2px}
+
+/* D — ticket + device-first popover */
+.dcard{width:288px;border-radius:14px;overflow:hidden}
+.dc-in{padding:12px 12px 10px;display:flex;gap:11px;align-items:center}
+.dc-in .dev{margin-top:6px}
+.dc-prog{padding:0 12px 11px}
+.dpop{width:304px;border-radius:18px;padding:14px;display:grid;gap:11px}
+.dp-head{display:flex;gap:11px;align-items:center}
+.dp-ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:var(--fill);color:var(--l1)}
+.dp-ic svg{width:22px;height:22px}
+.dp-now{display:flex;gap:10px;align-items:center;padding:8px;border-radius:12px;background:var(--fill)}
+.dl{display:grid;gap:1px;margin:0 -6px}
+.dl .row{height:28px;display:flex;align-items:center;gap:9px;padding:0 8px;border-radius:8px;font:400 13px/1 var(--sys)}
+.dl .row svg{width:15px;height:15px;color:var(--l2)}
+.dl .row.hov{background:var(--fill)}
+.dl .row small{margin-left:auto;font-size:11px;color:var(--l3)}
+.dp-foot{display:flex;justify-content:flex-end}
+.dp-foot .open{width:100%;justify-content:center}
+
+@media (prefers-reduced-motion: reduce){.mq.run .mq-in,.eq i{animation:none}}
+
+/* ================= mix-and-match additions ================= */
+.acard,.bc-in,.ih,.ic,.dpop{grid-template-columns:minmax(0,1fr)}
+body{min-width:1080px}
+.ours{color:var(--mbfg)}
+.page{max-width:1280px;margin:0 auto;padding:34px 32px 0}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:18px}
+.eyebrow{font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin-bottom:10px}
+h1{font:700 32px/1.05 var(--disp);letter-spacing:-.022em}
+.lede{margin-top:8px;color:var(--ink2);font-size:14px;max-width:720px}
+.back{font:500 12px/1 var(--mono);color:var(--ink2);text-decoration:none;border-bottom:1px solid var(--rule);padding-bottom:3px}
+.toolbar{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center;margin-bottom:12px}
+.tgroup{display:flex;align-items:center;gap:8px}
+.tlabel{font:500 12px/1 var(--sys);color:var(--ink2)}
+.seg{display:inline-flex;padding:2px;border-radius:9px;background:oklch(0.92 0.004 260);gap:2px}
+.seg button{height:28px;padding:0 11px;border-radius:7px;font:500 12.5px/1 var(--sys);color:var(--ink);display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.seg button svg{width:14px;height:14px}
+.seg button:hover{background:oklch(0.88 0.005 260)}
+.seg button[aria-pressed="true"]{background:oklch(1 0 0);box-shadow:0 0 0 .5px oklch(0 0 0 / .1),0 1px 3px oklch(0 0 0 / .16)}
+.sw{position:relative;width:38px;height:22px;border-radius:11px;background:oklch(0.86 0.005 260);cursor:pointer;flex:none;transition:background .15s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:oklch(1 0 0);box-shadow:0 1px 3px oklch(0 0 0 / .3);transition:transform .15s}
+.sw[aria-checked="true"]{background:var(--blue)}
+.sw[aria-checked="true"]::after{transform:translateX(16px)}
+.sw:disabled,.seg button:disabled{opacity:.4;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* live stage */
+.stage{position:relative;height:540px;border-radius:14px;overflow:hidden;isolation:isolate;box-shadow:0 0 0 1px oklch(0 0 0 / .08),0 20px 50px -24px oklch(0.3 0.05 260 / .45)}
+.mb.full{-webkit-mask-image:none;mask-image:none}
+.mb-left{position:absolute;left:14px;top:0;height:24px;display:flex;align-items:center;gap:19px;font:500 13px/1 var(--sys);color:var(--mbfg)}
+.mb-left b{font-weight:700}
+.slot{display:flex}
+.ours{cursor:default}
+.ours .inl{display:none}
+.ours.bar-D:hover:not(.openx) .inl,.ours.bar-D.forcehov .inl{display:flex}
+.ours.bar-D:hover:not(.openx):not(.isl),.ours.bar-D.forcehov:not(.isl){background:var(--hls)}
+.inl button:hover{background:var(--hl)}
+.bdev{display:grid;place-items:center;color:var(--mbfg2);margin-left:-1px}
+.bdev svg{width:13px;height:13px}
+.stk.one b{font-size:12px;line-height:14px}
+.ring svg.sq{transform:none}
+.ring path{fill:none;stroke:var(--mbfg);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ring .art.sqa{--r:3.5px}
+.tb{cursor:default}
+.tb:hover{background:var(--fill)}
+.tb.lg:hover{background:color-mix(in srgb,var(--l1) 18%,transparent)}
+.tb:active{transform:scale(.94)}
+.menu .mi:hover{background:var(--blue);color:#fff}
+.menu .mi:hover>svg,.menu .mi:hover .kb{color:rgba(255,255,255,.85)}
+.dl .row:hover{background:var(--fill)}
+.vol .bar{cursor:default;touch-action:none}
+.ic .ctl3{gap:26px}.ic .tb.lg{width:46px;height:46px}
+.chip[data-act]{cursor:default}
+.chip[data-act]:hover{background:color-mix(in srgb,var(--l1) 16%,transparent)}
+.hint{position:absolute;left:14px;bottom:12px;font:500 11px/1 var(--mono);color:var(--cap);pointer-events:none}
+.toast{position:absolute;left:50%;bottom:16px;transform:translate(-50%,8px);opacity:0;transition:opacity .2s,transform .2s;padding:9px 14px;border-radius:999px;font:500 12px/1 var(--sys);color:var(--l1);pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* selector rows */
+.sel{margin-top:30px}
+.sel-h{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
+.sel-h h2{font:700 18px/1 var(--disp);letter-spacing:-.01em}
+.sel-h span{color:var(--ink2);font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.card{position:relative;border-radius:14px;background:var(--card);box-shadow:0 0 0 1px var(--rule);padding:7px;cursor:pointer;transition:box-shadow .15s,transform .15s}
+.card:hover{box-shadow:0 0 0 1px oklch(0.8 0.01 260),0 8px 20px -12px oklch(0.3 0.03 260 / .4)}
+.card[aria-checked="true"]{box-shadow:0 0 0 2px var(--blue),0 10px 24px -14px oklch(0.62 0.2 255 / .7)}
+.tbox{position:relative;border-radius:9px;overflow:hidden;pointer-events:none}
+.tbox.k-bar{height:84px}.tbox.k-hover{height:168px}.tbox.k-click{height:250px}
+.tbar{position:absolute;left:0;right:0;top:30px}
+.tbar .mb{-webkit-mask-image:linear-gradient(90deg,transparent,#000 24px);mask-image:linear-gradient(90deg,transparent,#000 24px)}
+.tscale{position:absolute;left:50%;top:12px;transform:translateX(-50%) scale(.55);transform-origin:top center}
+.tscale .pop{position:relative;top:0!important;left:0!important}
+.tick{position:absolute;top:14px;right:14px;width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;display:none;place-items:center;box-shadow:0 2px 6px oklch(0.62 0.2 255 / .5);z-index:2}
+.tick svg{width:12px;height:12px}
+.card[aria-checked="true"] .tick{display:grid}
+.cmeta{display:flex;gap:10px;align-items:baseline;padding:10px 6px 5px}
+.cmeta b{font:800 20px/1 var(--disp)}
+.cmeta div{min-width:0}
+.cmeta strong{display:block;font:600 13px/1.25 var(--sys)}
+.cmeta small{display:block;color:var(--ink2);font-size:12px;line-height:1.35;margin-top:2px}
+
+.details{margin-top:30px;display:grid;grid-template-columns:1fr 1.35fr 1fr 1fr;gap:14px}
+.det{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:10px 14px;border-radius:12px;background:var(--card);box-shadow:0 0 0 1px var(--rule)}
+.det label,.det .dl2{font:600 13px/1.25 var(--sys)}
+.det small{display:block;font:400 11.5px/1.3 var(--sys);color:var(--ink2);margin-top:2px}
+.det.off{opacity:.55}
+.det input[type=range]{width:120px;accent-color:var(--blue)}
+.det output{font:600 12px/1 var(--mono);min-width:44px;text-align:right}
+
+/* sticky dock */
+.dock{position:sticky;bottom:0;z-index:30;margin-top:34px;background:color-mix(in oklch,var(--page) 84%,transparent);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);border-top:1px solid var(--rule)}
+.dock-in{max-width:1280px;margin:0 auto;padding:14px 32px 16px;display:grid;grid-template-columns:1fr auto auto;gap:18px;align-items:center}
+.sum{font-size:14px;line-height:1.45}
+.sum b{font-weight:650}
+.build{margin-top:4px;font:500 11px/1.35 var(--mono);color:var(--ink2)}
+.code{font:500 12.5px/1.4 var(--mono);padding:10px 12px;border-radius:9px;background:oklch(0.93 0.005 260);user-select:all;-webkit-user-select:all;white-space:nowrap;cursor:text}
+.copy{height:46px;min-width:168px;padding:0 20px;border-radius:12px;background:var(--blue);color:#fff;font:600 14.5px/1 var(--sys);display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+  box-shadow:inset 0 .5px 0 oklch(1 0 0 / .4),0 1px 2px oklch(0 0 0 / .2),0 8px 18px -6px oklch(0.62 0.2 255 / .6);transition:background .15s,transform .1s}
+.copy:hover{background:oklch(0.58 0.2 255)}
+.copy:active{transform:translateY(1px)}
+.copy svg{width:16px;height:16px}
+.copy.done{background:oklch(0.62 0.17 150);box-shadow:inset 0 .5px 0 oklch(1 0 0 / .4),0 8px 18px -6px oklch(0.62 0.17 150 / .6)}
+
+/* audit (only in audit build) */
+.audit{margin-bottom:28px;padding:16px;border-radius:14px;background:var(--card);box-shadow:0 0 0 1px var(--rule)}
+.audit h2{font:700 18px/1.2 var(--disp)}
+.audit .res{margin:6px 0 14px;font:500 12px/1.5 var(--mono)}
+.agrid{display:grid;grid-template-columns:repeat(4,288px);gap:12px 16px}
+.at{position:relative;width:288px;overflow:hidden;border-radius:8px}
+.at .stage{position:absolute;left:0;top:0;width:600px;transform:scale(.48);transform-origin:0 0;border-radius:0}
+.at-l{font:600 10px/1 var(--mono);margin:4px 0 8px;color:var(--ink2)}
+
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M7 4.9v14.2a1.1 1.1 0 0 0 1.66.95l11.4-7.1a1.1 1.1 0 0 0 0-1.9L8.66 3.95A1.1 1.1 0 0 0 7 4.9z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect fill="currentColor" x="5.5" y="4" width="4.6" height="16" rx="1.3"/><rect fill="currentColor" x="13.9" y="4" width="4.6" height="16" rx="1.3"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path fill="currentColor" d="M1.5 6.3v11.4a.9.9 0 0 0 1.4.74L11 13v4.7a.9.9 0 0 0 1.4.74l9.2-5.7a.9.9 0 0 0 0-1.48l-9.2-5.7A.9.9 0 0 0 11 6.3V11L2.9 5.56A.9.9 0 0 0 1.5 6.3z"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path fill="currentColor" transform="translate(24 0) scale(-1 1)" d="M1.5 6.3v11.4a.9.9 0 0 0 1.4.74L11 13v4.7a.9.9 0 0 0 1.4.74l9.2-5.7a.9.9 0 0 0 0-1.48l-9.2-5.7A.9.9 0 0 0 11 6.3V11L2.9 5.56A.9.9 0 0 0 1.5 6.3z"/></symbol>
+  <symbol id="i-spk" viewBox="0 0 24 24"><path fill="currentColor" d="M3.2 9h3.4l4.6-3.9c.6-.5 1.5-.1 1.5.7v12.4c0 .8-.9 1.2-1.5.7L6.6 15H3.2A1.2 1.2 0 0 1 2 13.8v-3.6C2 9.5 2.5 9 3.2 9z"/></symbol>
+  <symbol id="i-spk3" viewBox="0 0 24 24"><path fill="currentColor" d="M2.2 9h3l4-3.9c.6-.5 1.4-.1 1.4.7v12.4c0 .8-.8 1.2-1.4.7l-4-3.9h-3A1.2 1.2 0 0 1 1 13.8v-3.6C1 9.5 1.5 9 2.2 9z"/><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M13.8 9.2a4 4 0 0 1 0 5.6"/><path d="M16.6 6.6a7.6 7.6 0 0 1 0 10.8"/><path d="M19.4 4a11.3 11.3 0 0 1 0 16"/></g></symbol>
+  <symbol id="i-laptop" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="5" width="16" height="11" rx="1.6"/><path d="M1.8 19h20.4"/></g></symbol>
+  <symbol id="i-iphone" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="6.5" y="2" width="11" height="20" rx="2.8"/><path d="M10.5 5h3"/></g></symbol>
+  <symbol id="i-hifi" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5.5" y="2" width="13" height="20" rx="2.8"/><circle cx="12" cy="14.5" r="3.3"/></g><circle fill="currentColor" cx="12" cy="6.6" r="1.3"/></symbol>
+  <symbol id="i-tv" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 20.5h8"/></g></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24"><circle fill="currentColor" cx="12" cy="18.4" r="1.9"/><g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M8.1 14.3a5.5 5.5 0 0 1 7.8 0"/><path d="M5 11.1a9.9 9.9 0 0 1 14 0"/><path d="M2 7.9a14.2 14.2 0 0 1 20 0"/></g></symbol>
+  <symbol id="i-bat" viewBox="0 0 28 14"><rect x="1" y="1" width="22.5" height="12" rx="3.6" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".45"/><rect x="2.8" y="2.8" width="15" height="8.4" rx="2" fill="currentColor"/><path d="M25.3 5v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".45"/></symbol>
+  <symbol id="i-cc" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4" width="19" height="7" rx="3.5"/><rect x="2.5" y="13" width="19" height="7" rx="3.5"/></g><circle fill="currentColor" cx="17.9" cy="7.5" r="2.1"/><circle fill="currentColor" cx="6.1" cy="16.5" r="2.1"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M7 18.5h10.6a4.1 4.1 0 0 0 .5-8.15A6.1 6.1 0 0 0 6.5 11a3.75 3.75 0 0 0 .5 7.5z"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M9.5 14.5 15.5 8.5M10.5 8.5h5v5"/></g></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M9 4.5 16.5 12 9 19.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.5 9.5 17.5 19.5 6.5"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path fill="currentColor" d="M8 2.5h8a1 1 0 0 1 .7 1.7L15 6v4.5l3.3 3a1 1 0 0 1-.7 1.7H13v6.3l-1 1.5-1-1.5v-6.3H6.4a1 1 0 0 1-.7-1.7l3.3-3V6L7.3 4.2A1 1 0 0 1 8 2.5z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path stroke-linecap="round" d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></g></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12.5" height="12.5" rx="2.8"/><path d="M16 8V6.3A2.8 2.8 0 0 0 13.2 3.5H6.3A2.8 2.8 0 0 0 3.5 6.3v6.9A2.8 2.8 0 0 0 6.3 16H8"/></g></symbol>
+</svg>
+<div class="page">
+  <div class="top" data-od-id="page-header">
+    <div>
+      <div class="eyebrow">Now Playing for Spotify · macOS 26 · mix &amp; match</div>
+      <h1 data-od-id="page-title">Compose your menu bar extra</h1>
+      <p class="lede">Choose a bar item, hover card and click surface from alternatives A–D. The preview is live and drawn at true scale. Hover over the item, click it, and use the controls.</p>
+    </div>
+    <a class="back" href="spotify-now-playing-alternatives.html" data-od-id="link-alternatives">← All four alternatives</a>
+  </div>
+
+  <div id="auditSlot"></div>
+
+  <div class="toolbar" data-od-id="preview-toolbar">
+    <div class="tgroup"><span class="tlabel">Appearance</span>
+      <div class="seg" data-key="mode"><button data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
+    <div class="tgroup"><span class="tlabel">Playing on</span>
+      <div class="seg" data-key="device">
+        <button data-v="mac"><svg><use href="#i-laptop"/></svg>This Mac</button>
+        <button data-v="iphone"><svg><use href="#i-iphone"/></svg>iPhone</button>
+        <button data-v="kitchen"><svg><use href="#i-hifi"/></svg>Kitchen speaker</button>
+        <button data-v="tv"><svg><use href="#i-tv"/></svg>Living Room TV</button></div></div>
+    <div class="tgroup"><span class="tlabel">State</span>
+      <div class="seg" data-key="paused"><button data-v="false">Playing</button><button data-v="true">Paused</button></div></div>
+    <div class="tgroup"><span class="tlabel" id="lbl-long">Long title</span><button class="sw" role="switch" data-key="long" aria-labelledby="lbl-long"></button></div>
+  </div>
+
+  <div class="stage light" id="stage" data-od-id="live-preview"></div>
+
+  <section class="sel" data-od-id="row-bar"><div class="sel-h"><h2>1 · Menu bar item</h2><span>what you see at rest</span></div><div class="cards" role="radiogroup" aria-label="Menu bar item style" data-kind="bar"></div></section>
+  <section class="sel" data-od-id="row-hover"><div class="sel-h"><h2>2 · Hover card</h2><span>appears after ~350 ms over the item, no click needed</span></div><div class="cards" role="radiogroup" aria-label="Hover card style" data-kind="hover"></div></section>
+  <section class="sel" data-od-id="row-click"><div class="sel-h"><h2>3 · Click / controls</h2><span>opens on click; Esc or a click outside closes it</span></div><div class="cards" role="radiogroup" aria-label="Click surface style" data-kind="click"></div></section>
+
+  <section class="details" data-od-id="detail-toggles">
+    <div class="det" data-det="artist"><div><label id="lbl-artist">Show artist in bar</label><small>A, B and D only</small></div><button class="sw" role="switch" data-key="artist" aria-labelledby="lbl-artist"></button></div>
+    <div class="det" data-det="width"><div><label for="rng-width">Max title width</label><small>80–200 pt · A, B and D only</small></div><input id="rng-width" type="range" min="80" max="200" step="4" data-key="width"><output id="out-width"></output></div>
+    <div class="det"><div><span class="dl2">Thumbnail shape</span><small>Bar art and C's ring</small></div><div class="seg" data-key="shape"><button data-v="rounded">Rounded</button><button data-v="circle">Circle</button></div></div>
+    <div class="det"><div><label id="lbl-dev">Show device icon in bar</label><small>Glyph for where audio is playing</small></div><button class="sw" role="switch" data-key="devIcon" aria-labelledby="lbl-dev"></button></div>
+  </section>
+</div>
+
+<div class="dock" data-od-id="summary-dock">
+  <div class="dock-in">
+    <div><div class="sum" id="sum" aria-live="polite"></div><div class="build" id="build"></div></div>
+    <code class="code" id="code" data-od-id="selection-code"></code>
+    <button class="copy" id="copy" data-od-id="copy-selection"><svg><use href="#i-copy"/></svg><span>Copy selection</span></button>
+  </div>
+</div>
+
+<script>
+(() => {
+  /* ---------- data ---------- */
+  const DEV = {
+    mac:     { icon: 'laptop', name: 'This Mac',        short: 'MacBook Pro', line: 'This Mac · MacBook Pro' },
+    iphone:  { icon: 'iphone', name: 'iPhone',          short: 'iPhone',      line: 'Playing on iPhone' },
+    kitchen: { icon: 'hifi',   name: 'Kitchen speaker', short: 'Kitchen',     line: 'Playing on Kitchen speaker' },
+    tv:      { icon: 'tv',     name: 'Living Room TV',  short: 'Living Room', line: 'Playing on Living Room TV' },
+  };
+  const TRACKS = [
+    { t: 'Glasshouse Weather', a: 'Mara Lindqvist', al: 'Small Hours, Vol. 2', art: 'art1', el: '1:47', rem: '−2:05', p: 46 },
+    { t: 'Everything I Meant to Say Before the Last Train (Extended)', a: 'The Overpass Choir', al: 'Last Train Sessions', art: 'art2', el: '0:31', rem: '−4:12', p: 11 },
+  ];
+  const NAMES = {
+    bar:   { A: ['Quiet Native', 'Art + marquee title'], B: ['Glass Stage', 'Art + title · artist'], C: ['Island', 'Art-only progress ring'], D: ['Stacked Ticker', 'Two-line ticker, inline hover controls'] },
+    hover: { A: ['Quiet Native', 'Compact glass card'], B: ['Glass Stage', 'Blurred-art glass, inline controls'], C: ['Island', 'Black island from the item'], D: ['Stacked Ticker', 'Device-centric ticket'] },
+    click: { A: ['Quiet Native', 'Native NSMenu dropdown'], B: ['Glass Stage', 'Pinned glass card'], C: ['Island', 'Expanded island'], D: ['Stacked Ticker', 'Device remote + Switch to'] },
+  };
+  const PHRASE = {
+    bar:   { A: 'art and a marquee title', B: 'art with title · artist', C: 'only the art inside a progress ring', D: 'a stacked two-line ticker that reveals controls on hover' },
+    hover: { A: 'the compact glass card', B: 'the blurred-art glass card with inline controls', C: 'the black island', D: 'the device-centric ticket' },
+    click: { A: 'a native NSMenu dropdown', B: 'the hover card, pinned', C: 'the expanded island', D: 'a device remote with a Switch-to list' },
+  };
+  const BUILD = {
+    bar:   { A: 'NSStatusItem(variableLength)', B: 'NSStatusItem(variableLength)', C: 'NSStatusItem(squareLength)', D: 'NSStatusItem(variableLength) + animated width' },
+    hover: { A: 'non-activating NSPanel', B: 'non-activating NSPanel + .glassEffect', C: 'borderless NSPanel @ .statusBar level', D: 'non-activating NSPanel' },
+    click: { A: 'NSMenu + NSMenuItem.view', B: 'same NSPanel, pinned & key', C: 'borderless NSPanel, larger detent', D: 'NSPopover' },
+  };
+  const DEFAULTS = { bar: 'D', hover: 'B', click: 'D', mode: 'light', device: 'tv', paused: false, long: false, artist: true, width: 132, shape: 'rounded', devIcon: true, vol: 58 };
+  const KEY = 'np-mixmatch-v1';
+  const S = { ...DEFAULTS };
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+    for (const k in DEFAULTS) if (k in saved && typeof saved[k] === typeof DEFAULTS[k]) S[k] = saved[k];
+  } catch (e) { /* storage unavailable */ }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } };
+
+  /* ---------- tiny view helpers ---------- */
+  const ic = (n, cls) => `<svg${cls ? ` class="${cls}"` : ''}><use href="#i-${n}"/></svg>`;
+  const T = s => TRACKS[s.long ? 1 : 0];
+  const D_ = s => DEV[s.device];
+  const art = (t, sz, r) => `<i class="art ${t.art}" style="--s:${sz}px;--r:${r}px"></i>`;
+  const prog = t => `<div class="prog"><span class="tm">${t.el}</span><div class="bar"><i style="width:${t.p}%"></i></div><span class="tm r">${t.rem}</span></div>`;
+  const vol = s => `<div class="vol"><svg><use href="#i-spk"/></svg><div class="bar" data-vol><i style="width:${s.vol}%"></i><b class="knob" style="left:${s.vol}%"></b></div><svg><use href="#i-spk3"/></svg></div>`;
+  const ctl = s => `<div class="ctl3"><button class="tb" data-act="prev" aria-label="Previous track">${ic('prev')}</button><button class="tb lg" data-act="toggle" aria-label="${s.paused ? 'Play' : 'Pause'}">${ic(s.paused ? 'play' : 'pause')}</button><button class="tb" data-act="next" aria-label="Next track">${ic('next')}</button></div>`;
+  const eq = (s, style = '') => s.paused ? '' : `<span class="eq"${style}><i></i><i></i><i></i><i></i></span>`;
+  const openBtn = `<button class="open" data-act="open">${ic('open')}Open Spotify</button>`;
+  const meta3 = (t, lg) => `<div class="meta"><div class="t-title${lg ? ' lg' : ''}">${t.t}</div><div class="t-sub">${t.a}</div><div class="t-ter">${t.al}</div></div>`;
+
+  /* ---------- bar items ---------- */
+  function barArt(s, size, pauseGlyph) {
+    const r = s.shape === 'circle' ? '50%' : (size <= 16 ? '4px' : '4.5px');
+    const pz = s.paused && pauseGlyph;
+    return `<i class="art ${T(s).art}${pz ? ' pz' : ''}" style="--s:${size}px;--r:${r}">${pz ? ic('pause') : ''}</i>`;
+  }
+  const devGlyph = s => s.devIcon ? `<span class="bdev" title="${D_(s).name}">${ic(D_(s).icon)}</span>` : '';
+  function ring(s) {
+    const t = T(s), p = t.p, circ = s.shape === 'circle';
+    const g = circ
+      ? `<svg viewBox="0 0 20 20"><circle class="trk" cx="10" cy="10" r="8.6" pathLength="100"/><circle class="prg" cx="10" cy="10" r="8.6" pathLength="100" stroke-dasharray="${p} 100"/></svg>`
+      : (d => `<svg class="sq" viewBox="0 0 20 20"><path class="trk" d="${d}" pathLength="100"/><path class="prg" d="${d}" pathLength="100" stroke-dasharray="${p} 100"/></svg>`)
+        ('M10 1.4H13.1A5.5 5.5 0 0 1 18.6 6.9V13.1A5.5 5.5 0 0 1 13.1 18.6H6.9A5.5 5.5 0 0 1 1.4 13.1V6.9A5.5 5.5 0 0 1 6.9 1.4Z');
+    return `<span class="ring">${g}<i class="art ${t.art}${circ ? '' : ' sqa'}${s.paused ? ' pz' : ''}">${s.paused ? ic('pause') : ''}</i></span>`;
+  }
+  const BAR = {
+    A: s => { const t = T(s);
+      const txt = s.artist ? `${t.t}<span class="dim"> — ${t.a}</span>` : t.t;
+      return `<div class="ours bar-A${s.paused ? ' paused' : ''}">${barArt(s, 16)}<span class="mq" data-mq style="max-width:${s.width}px"><span class="mq-in"><span>${txt}</span></span></span>${devGlyph(s)}</div>`; },
+    B: s => { const t = T(s);
+      return `<div class="ours bar-B${s.paused ? ' paused' : ''}">${barArt(s, 18, true)}<span class="b-txt" style="max-width:${s.width}px">${t.t}${s.artist ? `<span class="dim"> · ${t.a}</span>` : ''}</span>${devGlyph(s)}</div>`; },
+    C: s => `<div class="ours bar-C${s.paused ? ' paused' : ''}" style="padding:0 5px">${ring(s)}${devGlyph(s)}</div>`,
+    D: s => { const t = T(s), d = D_(s);
+      let l2 = '';
+      if (s.paused) l2 = `${ic('pause', 'dv')}Paused${s.devIcon ? ' · ' + d.short : ''}`;
+      else if (s.artist) l2 = `${s.devIcon ? ic(d.icon, 'dv') : ''}${t.a}`;
+      else if (s.devIcon) l2 = `${ic(d.icon, 'dv')}${d.name}`;
+      return `<div class="ours bar-D${s.paused ? ' paused' : ''}">${barArt(s, 18)}<span class="stk${l2 ? '' : ' one'}" style="max-width:${s.width}px"><b>${t.t}</b>${l2 ? `<span>${l2}</span>` : ''}</span>` +
+        `<span class="inl"><button data-act="prev" aria-label="Previous track">${ic('prev')}</button><button data-act="toggle" aria-label="${s.paused ? 'Play' : 'Pause'}">${ic(s.paused ? 'play' : 'pause')}</button><button data-act="next" aria-label="Next track">${ic('next')}</button></span></div>`; },
+  };
+
+  /* ---------- hover cards ---------- */
+  const HOVER = {
+    A: s => { const t = T(s), d = D_(s); return `<div class="pop glass acard hovercard" data-od-id="hover-card-a">
+      <div class="ac-top">${art(t, 56, 7)}${meta3(t)}</div>${prog(t)}<div class="dev">${ic(d.icon)}${d.line}</div></div>`; },
+    B: s => { const t = T(s), d = D_(s); return `<div class="pop glass bcard hovercard" data-od-id="hover-card-b">
+      <div class="blurart ${t.art}"></div><div class="tint"></div><div class="bc-in">
+      <div class="bc-top">${art(t, 96, 10)}<div class="meta"><div class="t-title lg">${t.t}</div><div class="t-sub">${t.a}</div><div class="t-ter">${t.al}</div>
+      <span class="dev chip">${ic(d.icon)}${d.name}</span></div></div>${prog(t)}${ctl(s)}${vol(s)}</div></div>`; },
+    C: s => { const t = T(s), d = D_(s); return `<div class="pop island ih hovercard" data-od-id="hover-card-c">
+      <div class="ih-top">${art(t, 42, 9)}<div class="meta"><div class="t-title">${t.t}</div><div class="t-sub">${t.a} — ${t.al}</div></div>${eq(s)}</div>${prog(t)}
+      <div class="ih-foot"><span class="dev">${ic(d.icon)}${d.line.replace('This Mac · ', 'Playing on ')}</span><span class="t-ter" style="color:var(--l3)">Click for controls</span></div></div>`; },
+    D: s => { const t = T(s), d = D_(s); return `<div class="pop glass dcard hovercard" data-od-id="hover-card-d">
+      <div class="dc-in">${art(t, 60, 8)}<div class="meta"><div class="t-title">${t.t}</div><div class="t-sub">${t.a}</div><div class="t-ter">${t.al}</div>
+      <span class="dev">${ic(d.icon)}${d.name}</span></div></div><div class="dc-prog prog"><span class="tm">${t.el}</span><div class="bar"><i style="width:${t.p}%"></i></div><span class="tm r">${t.rem}</span></div></div>`; },
+  };
+
+  /* ---------- click surfaces ---------- */
+  const CLICK = {
+    A: s => { const t = T(s), d = D_(s); return `<div class="pop glass menu clickpop" data-align="left" role="menu" data-od-id="click-menu-a">
+      <div class="mv mh">${art(t, 38, 6)}<div class="meta"><div class="t-title">${t.t}</div><div class="t-sub">${t.a}</div></div></div>
+      <div class="mv">${prog(t)}</div><div class="mv">${ctl(s)}</div><div class="mv">${vol(s)}</div><div class="sep"></div>
+      <div class="mi" role="menuitem" data-act="cycle">${ic(d.icon)}Playing on ${d.short}<svg class="kb"><use href="#i-chev"/></svg></div>
+      <div class="mi" role="menuitem" data-act="open">${ic('open')}Open Spotify<span class="kb">⌘O</span></div>
+      <div class="mi" role="menuitem" data-act="close">${ic('gear')}Settings…<span class="kb">⌘,</span></div><div class="sep"></div>
+      <div class="mi" role="menuitem" data-act="close"><span class="sp"></span>Quit Now Playing<span class="kb">⌘Q</span></div></div>`; },
+    B: s => { const t = T(s), d = D_(s); return `<div class="pop glass bcard clickpop" data-od-id="click-card-b">
+      <div class="blurart ${t.art}"></div><div class="tint"></div><div class="bc-in">
+      <span class="pin" title="Pinned">${ic('pin')}</span>
+      <div class="bc-top">${art(t, 96, 10)}<div class="meta" style="padding-right:26px"><div class="t-title lg">${t.t}</div><div class="t-sub">${t.a}</div><div class="t-ter">${t.al}</div>
+      <span class="dev chip" data-act="cycle">${ic(d.icon)}${d.name}${ic('chev', 'chev')}</span></div></div>${prog(t)}${ctl(s)}${vol(s)}
+      <div class="bc-foot"><span class="kh"><kbd>space</kbd> play · <kbd>←</kbd><kbd>→</kbd> skip<br><kbd>↑</kbd><kbd>↓</kbd> volume · <kbd>esc</kbd> close</span>${openBtn}</div></div></div>`; },
+    C: s => { const t = T(s), d = D_(s); return `<div class="pop island ic clickpop" data-od-id="click-island-c">
+      <div class="ic-top">${art(t, 68, 13)}${meta3(t, true)}${eq(s, ' style="align-self:flex-start;margin-top:4px"')}</div>${prog(t)}${ctl(s)}${vol(s)}
+      <div class="ic-foot"><span class="dev chip" data-act="cycle">${ic(d.icon)}${d.name}${ic('chev', 'chev')}</span>${openBtn}</div></div>`; },
+    D: s => { const t = T(s), d = D_(s);
+      const rows = Object.entries(DEV).filter(([k]) => k !== s.device)
+        .map(([k, v]) => `<div class="row" role="button" data-act="dev" data-dev="${k}">${ic(v.icon)}${v.name}${k === 'mac' ? '<small>MacBook Pro</small>' : ''}</div>`).join('');
+      return `<div class="pop glass dpop clickpop" data-od-id="click-remote-d">
+      <div class="dp-head"><span class="dp-ic">${ic(d.icon)}</span><div class="meta"><div class="up">Playing on</div><div class="t-title lg">${d.name}</div></div></div>
+      <div class="dp-now">${art(t, 44, 7)}<div class="meta"><div class="t-title">${t.t}</div><div class="t-sub">${t.a} · ${t.al}</div></div></div>
+      ${prog(t)}${ctl(s)}${vol(s)}<div class="sep" style="margin:2px 0"></div><div class="up">Switch to</div><div class="dl">${rows}</div>
+      <div class="dp-foot">${openBtn}</div></div>`; },
+  };
+
+  /* ---------- stage painting (shared by preview, audit) ---------- */
+  const SYS_R = '<span class="sx"><svg><use href="#i-wifi"/></svg></span><span class="sx bat"><svg viewBox="0 0 28 14"><use href="#i-bat"/></svg></span><span class="sx"><svg><use href="#i-cc"/></svg></span><span class="clock">Mon 9:41 AM</span>';
+  const LEFT = '<div class="mb-left"><b>Xcode</b><span>File</span><span>Edit</span><span>View</span><span>Find</span><span>Navigate</span><span>Editor</span><span>Product</span><span>Window</span><span>Help</span></div>';
+  function initStage(st, withLeft) {
+    st.innerHTML = `<div class="mb full">${withLeft ? LEFT : ''}<div class="mb-row"><span class="sx"><svg><use href="#i-cloud"/></svg></span><span class="slot"></span>${SYS_R}</div></div>`;
+  }
+  function postProcess(root) {
+    root.querySelectorAll('.mq[data-mq]').forEach(mq => {
+      const inn = mq.firstElementChild;
+      if (inn.scrollWidth > mq.clientWidth + 1) {
+        mq.classList.add('run');
+        const c = inn.firstElementChild.cloneNode(true); c.setAttribute('aria-hidden', 'true'); inn.append(c);
+        inn.style.animationDuration = Math.max(9, inn.scrollWidth / 2 / 26) + 's';
+      }
+    });
+    root.querySelectorAll('.b-txt').forEach(b => { // drop artist first, then ellipsis
+      const dim = b.querySelector('.dim');
+      if (dim && b.scrollWidth > b.clientWidth + 1) dim.remove();
+    });
+    root.querySelectorAll('.stk b').forEach(b => { if (b.scrollWidth > b.clientWidth + 1) b.classList.add('fade'); });
+  }
+  function place(st) {
+    const R = st.getBoundingClientRect(), k = R.width / st.offsetWidth || 1;
+    const it = st.querySelector('.slot .ours'); if (!it) return;
+    const ri = it.getBoundingClientRect();
+    const il = (ri.left - R.left) / k, iw = ri.width / k, cx = il + iw / 2;
+    st.querySelectorAll(':scope > .pop').forEach(p => {
+      const w = p.offsetWidth;
+      const x = p.dataset.align === 'left' ? il - 5 : cx - w / 2;
+      p.style.left = Math.max(8, Math.min(x, st.clientWidth - w - 8)) + 'px';
+    });
+    st.querySelectorAll(':scope > .neck').forEach(n => n.style.left = (cx - n.offsetWidth / 2) + 'px');
+  }
+  function paint(st, s, ui) {
+    st.classList.remove('light', 'dark'); st.classList.add(s.mode);
+    const slot = st.querySelector('.slot');
+    slot.innerHTML = BAR[s.bar](s);
+    const item = slot.firstElementChild;
+    item.setAttribute('data-od-id', 'preview-bar-item');
+    item.setAttribute('role', 'button');
+    item.setAttribute('aria-expanded', String(!!ui.click));
+    item.setAttribute('aria-label', `Now playing: ${T(s).t} by ${T(s).a}`);
+    st.querySelectorAll(':scope > .pop, :scope > .neck').forEach(n => n.remove());
+    const kind = ui.click ? 'click' : (ui.hover ? 'hover' : null);
+    const style = kind ? s[kind] : null;
+    const island = style === 'C';
+    item.classList.toggle('isl', island);
+    item.classList.toggle('on', kind === 'click' && !island);
+    item.classList.toggle('openx', kind === 'click');
+    item.classList.toggle('forcehov', !!ui.forceHov);
+    if (kind) {
+      if (island) st.insertAdjacentHTML('beforeend', '<div class="neck"></div>');
+      st.insertAdjacentHTML('beforeend', (kind === 'click' ? CLICK : HOVER)[style](s));
+    }
+    postProcess(st);
+    place(st);
+  }
+
+  /* ---------- live preview ---------- */
+  const stage = document.getElementById('stage');
+  const UI = { hover: false, click: false };
+  initStage(stage, true);
+  stage.insertAdjacentHTML('beforeend', '<div class="hint">Hover over the item · click for controls · Esc closes</div><div class="toast glass" id="toast"></div>');
+  const paintPreview = () => {
+    const f = document.activeElement && document.activeElement.closest && document.activeElement.closest('.slot .ours');
+    paint(stage, S, UI);
+    const it = stage.querySelector('.slot .ours'); it.tabIndex = 0; if (f) it.focus();
+    // narrow windows: hide app menus that would run under the status items
+    const lim = it.parentElement.parentElement.getBoundingClientRect().left - 12;
+    stage.querySelectorAll('.mb-left > *').forEach(m => { m.style.visibility = ''; if (m.getBoundingClientRect().right > lim) m.style.visibility = 'hidden'; });
+  };
+  stage.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.slot .ours')) { e.preventDefault(); UI.click = !UI.click; UI.hover = false; paintPreview(); } });
+
+  let showT, hideT, toastT;
+  const inHoverZone = el => el && el.closest && (el.closest('.slot .ours') || el.closest('.hovercard'));
+  stage.addEventListener('pointerover', e => {
+    if (!inHoverZone(e.target)) return;
+    clearTimeout(hideT);
+    if (!UI.hover && !UI.click && e.target.closest('.slot .ours')) {
+      clearTimeout(showT);
+      showT = setTimeout(() => { UI.hover = true; paintPreview(); }, 350);
+    }
+  });
+  stage.addEventListener('pointerout', e => {
+    if (inHoverZone(e.relatedTarget)) return;
+    clearTimeout(showT);
+    if (UI.hover) hideT = setTimeout(() => { UI.hover = false; paintPreview(); }, 260);
+  });
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+  function act(a, el) {
+    const keys = Object.keys(DEV);
+    if (a === 'toggle') S.paused = !S.paused;
+    else if (a === 'prev' || a === 'next') S.long = !S.long;
+    else if (a === 'dev') S.device = el.dataset.dev;
+    else if (a === 'cycle') S.device = keys[(keys.indexOf(S.device) + 1) % keys.length];
+    else if (a === 'open') { UI.click = false; toast('Opens Spotify · NSWorkspace.openApplication(at:)'); }
+    else if (a === 'close') UI.click = false;
+    renderAll();
+  }
+  stage.addEventListener('click', e => {
+    const a = e.target.closest('[data-act]');
+    if (a) { e.stopPropagation(); act(a.dataset.act, a); return; }
+    if (e.target.closest('.slot .ours')) { clearTimeout(showT); UI.click = !UI.click; UI.hover = false; paintPreview(); return; }
+    if (!e.target.closest('.pop') && UI.click) { UI.click = false; paintPreview(); }
+  });
+  document.addEventListener('click', e => { if (UI.click && !stage.contains(e.target)) { UI.click = false; paintPreview(); } });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && (UI.click || UI.hover)) { UI.click = UI.hover = false; paintPreview(); }
+    if (UI.click && S.click === 'B' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) {
+      if (e.key === ' ') { e.preventDefault(); act('toggle'); }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); act('next'); }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); S.vol = Math.max(0, Math.min(100, S.vol + (e.key === 'ArrowUp' ? 6 : -6))); renderAll(); }
+    }
+  });
+  // volume drag — updates in place so the popover isn't rebuilt mid-drag
+  stage.addEventListener('pointerdown', e => {
+    const bar = e.target.closest('[data-vol]'); if (!bar) return;
+    e.preventDefault(); bar.setPointerCapture(e.pointerId);
+    const set = ev => {
+      const r = bar.getBoundingClientRect();
+      S.vol = Math.round(Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)) * 100);
+      bar.firstElementChild.style.width = S.vol + '%'; bar.querySelector('.knob').style.left = S.vol + '%';
+    };
+    set(e);
+    const mv = ev => set(ev);
+    const up = () => { bar.removeEventListener('pointermove', mv); bar.removeEventListener('pointerup', up); save(); };
+    bar.addEventListener('pointermove', mv); bar.addEventListener('pointerup', up);
+  });
+
+  /* ---------- selector cards ---------- */
+  function thumb(kind, L) {
+    const s = { ...S, [kind]: L };
+    if (kind === 'bar') return `<div class="tbar"><div class="mb"><div class="mb-row"><span class="slot">${BAR[L](s)}</span><span class="clock">9:41 AM</span></div></div></div>`;
+    return `<div class="tscale">${(kind === 'hover' ? HOVER : CLICK)[L](s)}</div>`;
+  }
+  document.querySelectorAll('.cards').forEach(row => {
+    const kind = row.dataset.kind;
+    row.innerHTML = ['A', 'B', 'C', 'D'].map(L => `<div class="card" role="radio" tabindex="-1" data-v="${L}" data-od-id="card-${kind}-${L.toLowerCase()}">
+      <div class="tbox k-${kind} light"></div><span class="tick">${ic('check')}</span>
+      <div class="cmeta"><b>${L}</b><div><strong>${NAMES[kind][L][1]}</strong><small>${NAMES[kind][L][0]}</small></div></div></div>`).join('');
+    row.addEventListener('click', e => { const c = e.target.closest('.card'); if (c) { S[kind] = c.dataset.v; UI.click = UI.hover = false; renderAll(); } });
+    row.addEventListener('keydown', e => {
+      const i = 'ABCD'.indexOf(S[kind]);
+      const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]; if (!d) return;
+      e.preventDefault(); S[kind] = 'ABCD'[(i + d + 4) % 4]; renderAll(); row.querySelector(`[data-v="${S[kind]}"]`).focus();
+    });
+  });
+
+  /* ---------- controls ---------- */
+  document.querySelectorAll('.seg[data-key]').forEach(seg => seg.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.disabled) return;
+    const k = seg.dataset.key, v = b.dataset.v;
+    S[k] = typeof DEFAULTS[k] === 'boolean' ? v === 'true' : v; renderAll();
+  }));
+  document.querySelectorAll('.sw[data-key]').forEach(sw => sw.addEventListener('click', () => { if (!sw.disabled) { S[sw.dataset.key] = !S[sw.dataset.key]; renderAll(); } }));
+  const rng = document.getElementById('rng-width');
+  rng.addEventListener('input', () => { S.width = +rng.value; renderAll(); });
+
+  const code = s => `BAR=${s.bar} HOVER=${s.hover} CLICK=${s.click} artist=${s.artist ? 'on' : 'off'} width=${s.width} shape=${s.shape} device=${s.devIcon ? 'on' : 'off'}`;
+  function renderControls() {
+    document.querySelectorAll('.seg[data-key]').forEach(seg => seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(String(S[seg.dataset.key]) === b.dataset.v))));
+    document.querySelectorAll('.sw[data-key]').forEach(sw => sw.setAttribute('aria-checked', String(!!S[sw.dataset.key])));
+    rng.value = S.width; document.getElementById('out-width').textContent = S.width + ' pt';
+    const noText = S.bar === 'C';
+    document.querySelectorAll('[data-det="artist"],[data-det="width"]').forEach(d => d.classList.toggle('off', noText));
+    document.querySelector('.sw[data-key="artist"]').disabled = noText; rng.disabled = noText;
+  }
+  function renderCards() {
+    document.querySelectorAll('.cards').forEach(row => {
+      const kind = row.dataset.kind;
+      row.querySelectorAll('.card').forEach(c => {
+        const on = S[kind] === c.dataset.v;
+        c.setAttribute('aria-checked', String(on)); c.tabIndex = on ? 0 : -1;
+        const box = c.querySelector('.tbox');
+        box.classList.remove('light', 'dark'); box.classList.add(S.mode);
+        box.innerHTML = thumb(kind, c.dataset.v);
+        postProcess(box);
+      });
+    });
+  }
+  function renderDock() {
+    const d = [];
+    if (S.bar === 'C') d.push('Artist and title width don’t apply to the ring-only bar');
+    else d.push(`Artist ${S.artist ? 'shown' : 'hidden'} in the bar`, `titles capped at ${S.width} pt`);
+    d.push(`${S.shape === 'circle' ? 'circular' : 'rounded-square'} thumbnail`, `device icon ${S.devIcon ? 'shown' : 'hidden'} in the bar`);
+    document.getElementById('sum').innerHTML =
+      `The menu bar shows <b>${PHRASE.bar[S.bar]}</b> (${S.bar}). Hovering opens <b>${PHRASE.hover[S.hover]}</b> (${S.hover}), and clicking opens <b>${PHRASE.click[S.click]}</b> (${S.click}). ${d.join(', ').replace(/^./, c => c.toUpperCase())}.`;
+    document.getElementById('build').textContent = `${BUILD.bar[S.bar]} · hover: ${BUILD.hover[S.hover]} · click: ${BUILD.click[S.click]}`;
+    document.getElementById('code').textContent = code(S);
+  }
+  function renderAll() { renderControls(); renderCards(); paintPreview(); renderDock(); save(); }
+
+  /* ---------- copy ---------- */
+  const copyBtn = document.getElementById('copy');
+  let copyT;
+  copyBtn.addEventListener('click', async () => {
+    const txt = code(S); let ok = false;
+    try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) {
+      try {
+        const ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0';
+        document.body.append(ta); ta.select(); ok = document.execCommand('copy'); ta.remove();
+      } catch (e2) { ok = false; }
+    }
+    const lbl = copyBtn.querySelector('span'), use = copyBtn.querySelector('use');
+    if (ok) { copyBtn.classList.add('done'); lbl.textContent = 'Copied'; use.setAttribute('href', '#i-check'); }
+    else { const r = document.createRange(); r.selectNodeContents(document.getElementById('code')); getSelection().removeAllRanges(); getSelection().addRange(r); lbl.textContent = 'Press ⌘C'; }
+    clearTimeout(copyT);
+    copyT = setTimeout(() => { copyBtn.classList.remove('done'); lbl.textContent = 'Copy selection'; use.setAttribute('href', '#i-copy'); }, 1800);
+  });
+
+  renderAll();
+  document.fonts && document.fonts.ready.then(renderAll);
+
+  /* ---------- layout audit (audit build only) ---------- */
+  if (window.MM_AUDIT) {
+    const slotEl = document.getElementById('auditSlot');
+    slotEl.innerHTML = '<section class="audit"><h2>Layout audit — every bar × hover and bar × click pairing · 1280 pt screen</h2><div class="res" id="ares">running…</div><div class="stage light" id="astage" style="width:1280px;height:540px"></div><div class="agrid" id="agrid" style="margin-top:16px"></div></section>';
+    const ast = document.getElementById('astage'); initStage(ast, true);
+    const check = (st) => {
+      const out = [], R = st.getBoundingClientRect();
+      const item = st.querySelector('.slot .ours'), ir = item.getBoundingClientRect();
+      const left = st.querySelector('.mb-left');
+      if (left && ir.left < left.getBoundingClientRect().right + 8) out.push('item collides with app menus');
+      const pop = st.querySelector(':scope > .pop'); if (!pop) return out;
+      const pr = pop.getBoundingClientRect();
+      if (pr.left < R.left - .5 || pr.right > R.right + .5) out.push('popover off-screen');
+      if (pr.bottom > R.bottom) out.push('popover clipped at bottom');
+      const cx = ir.left + ir.width / 2;
+      if (cx < pr.left + 6 || cx > pr.right - 6) out.push('popover not under item');
+      pop.querySelectorAll('*').forEach(el => {
+        if (el.closest('.blurart,.tint')) return;
+        const r = el.getBoundingClientRect(); if (!r.width) return;
+        if (r.right > pr.right + 1 || r.left < pr.left - 1) out.push('overflow: ' + (el.getAttribute('class') || el.tagName));
+      });
+      const nk = st.querySelector(':scope > .neck');
+      if (nk) { const nr = nk.getBoundingClientRect(), c = nr.left + nr.width / 2; if (c < pr.left + 28 || c > pr.right - 28) out.push('island neck off flat edge'); }
+      return out;
+    };
+    const pairOK = {}, issues = []; let n = 0;
+    for (const bar of 'ABCD') for (const kind of ['hover', 'click']) for (const L of 'ABCD') {
+      let ok = true;
+      for (const device of Object.keys(DEV)) for (const long of [false, true]) for (const paused of [false, true])
+      for (const artist of [false, true]) for (const width of [80, 200]) for (const devIcon of [false, true]) {
+        const s = { ...DEFAULTS, bar, [kind]: L, device, long, paused, artist, width, devIcon };
+        paint(ast, s, { [kind]: true, forceHov: kind === 'hover' }); n++;
+        const r = check(ast);
+        if (r.length) { ok = false; if (issues.length < 25) issues.push(`BAR=${bar} ${kind.toUpperCase()}=${L} ${device} long=${long} paused=${paused} artist=${artist} w=${width} dev=${devIcon}: ${r.join('; ')}`); }
+      }
+      pairOK[bar + kind + L] = ok;
+    }
+    let pass = 0;
+    for (const b of 'ABCD') for (const h of 'ABCD') for (const c of 'ABCD') if (pairOK[b + 'hover' + h] && pairOK[b + 'click' + c]) pass++;
+    document.getElementById('ares').innerHTML = `<b>${pass}/64 combos pass</b> · ${n} renders checked (4 devices × long/short × playing/paused × artist on/off × width 80/200 × device icon on/off)` + (issues.length ? '<br>' + issues.join('<br>') : ' · no issues');
+    // visual grid: worst-case variants, hover tiles light, click tiles dark
+    const grid = document.getElementById('agrid');
+    for (const kind of ['hover', 'click']) for (const bar of 'ABCD') for (const L of 'ABCD') {
+      const s = kind === 'hover'
+        ? { ...DEFAULTS, bar, hover: L, long: true, width: 200, artist: true, devIcon: true, device: 'tv' }
+        : { ...DEFAULTS, bar, click: L, mode: 'dark', paused: true, device: 'kitchen', width: 80 };
+      const h = kind === 'hover' ? 300 : 480;
+      const w = document.createElement('div');
+      w.innerHTML = `<div class="at-l">BAR=${bar} × ${kind.toUpperCase()}=${L}</div><div class="at" style="height:${h * .48}px"><div class="stage" style="height:${h}px"></div></div>`;
+      grid.append(w);
+      const st = w.querySelector('.stage'); initStage(st, false);
+      paint(st, s, { [kind]: true, forceHov: kind === 'hover' });
+    }
+  }
+})();
+
+</script>
+</body>
+</html>

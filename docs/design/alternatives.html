@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Now Playing for Spotify — menu bar alternatives (macOS 26)</title>
+<style>
+:root{
+  --page: oklch(0.975 0.003 260);
+  --ink: oklch(0.21 0.01 260);
+  --ink2: oklch(0.5 0.012 260);
+  --rule: oklch(0.9 0.006 260);
+  --card: oklch(1 0 0);
+  --sys: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --disp: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --blue: oklch(0.62 0.2 255);
+  --green: oklch(0.74 0.19 150);
+  --green-ink: oklch(0.2 0.04 150);
+  --island: oklch(0.15 0.005 260 / .95);
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--page);color:var(--ink);font:400 14px/1.45 var(--sys);-webkit-font-smoothing:antialiased}
+button{border:0;background:none;font:inherit;color:inherit;padding:0;cursor:default}
+svg{display:block}
+
+/* ---------- page chrome ---------- */
+.wrap{overflow-x:auto;padding:48px 32px 64px}
+.inner{width:calc(400px*4 + 20px*3);margin:0 auto}
+header{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;padding-bottom:28px;border-bottom:1px solid var(--rule);margin-bottom:28px}
+.eyebrow{font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin-bottom:12px}
+h1{font:700 40px/1.05 var(--disp);letter-spacing:-.025em}
+.lede{margin-top:12px;max-width:780px;color:var(--ink2);font-size:15px}
+.specs{display:grid;gap:6px;font:500 11px/1.3 var(--mono);color:var(--ink2);text-align:right}
+.specs b{color:var(--ink);font-weight:600}
+
+.board{display:grid;grid-template-columns:repeat(4,400px);gap:14px 20px}
+.colhead{padding:4px 2px 10px}
+.colhead .ltr{font:800 54px/.9 var(--disp);letter-spacing:-.04em}
+.colhead .nm{font:600 17px/1.2 var(--disp);margin-top:10px}
+.colhead p{margin-top:6px;color:var(--ink2);font-size:13.5px;line-height:1.45;min-height:58px}
+.colhead .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.colhead .tags span{font:500 10.5px/1 var(--mono);padding:5px 7px;border-radius:6px;background:oklch(0.94 0.004 260);color:var(--ink2)}
+.band{grid-column:1/-1;display:flex;align-items:baseline;gap:12px;padding:22px 0 2px;border-top:1px solid var(--rule);margin-top:8px}
+.band b{font:700 20px/1 var(--disp);letter-spacing:-.01em}
+.band span{color:var(--ink2);font-size:13px}
+
+/* ---------- desktop slice ---------- */
+.slice{position:relative;width:400px;border-radius:12px;overflow:hidden;isolation:isolate;box-shadow:0 0 0 1px oklch(0 0 0 / .06)}
+.h-rest{height:200px}.h-hover{height:330px}.h-click{height:470px}
+.light{
+  --mbfg:rgba(0,0,0,.86);--mbfg2:rgba(0,0,0,.5);--mbbg:rgba(255,255,255,.22);
+  --hl:rgba(0,0,0,.11);--hls:rgba(0,0,0,.06);
+  --l1:rgba(0,0,0,.87);--l2:rgba(0,0,0,.56);--l3:rgba(0,0,0,.4);
+  --sep:rgba(0,0,0,.1);--fill:rgba(0,0,0,.07);--track:rgba(0,0,0,.14);
+  --glass:rgba(248,248,250,.66);--edge:rgba(255,255,255,.9);--rim:rgba(0,0,0,.13);
+  --btint:rgba(255,255,255,.52);--cap:rgba(0,0,0,.52);
+  background:
+    radial-gradient(70% 60% at 12% 8%, oklch(0.95 0.03 215) 0%, transparent 70%),
+    radial-gradient(60% 70% at 92% 92%, oklch(0.76 0.11 255) 0%, transparent 70%),
+    radial-gradient(50% 45% at 62% 46%, oklch(0.86 0.09 190) 0%, transparent 75%),
+    oklch(0.86 0.055 235);
+}
+.dark{
+  --mbfg:#fff;--mbfg2:rgba(255,255,255,.58);--mbbg:rgba(0,0,0,.14);
+  --hl:rgba(255,255,255,.2);--hls:rgba(255,255,255,.12);
+  --l1:rgba(255,255,255,.92);--l2:rgba(255,255,255,.6);--l3:rgba(255,255,255,.42);
+  --sep:rgba(255,255,255,.12);--fill:rgba(255,255,255,.1);--track:rgba(255,255,255,.2);
+  --glass:rgba(38,38,44,.56);--edge:rgba(255,255,255,.17);--rim:rgba(0,0,0,.55);
+  --btint:rgba(18,18,22,.48);--cap:rgba(255,255,255,.55);
+  background:
+    radial-gradient(65% 60% at 85% 10%, oklch(0.36 0.12 285) 0%, transparent 70%),
+    radial-gradient(70% 60% at 10% 95%, oklch(0.32 0.1 225) 0%, transparent 70%),
+    radial-gradient(40% 40% at 55% 55%, oklch(0.3 0.09 320) 0%, transparent 75%),
+    oklch(0.2 0.045 265);
+}
+.foot{position:absolute;left:10px;right:10px;bottom:8px;display:flex;justify-content:space-between;gap:10px;font:500 10px/1.2 var(--mono);color:var(--cap);pointer-events:none}
+.foot .md{text-transform:uppercase;letter-spacing:.08em}
+
+/* ---------- menu bar (24 pt, Tahoe: transparent) ---------- */
+.mb{position:relative;height:24px;display:flex;justify-content:flex-end;align-items:center;padding-right:6px;
+  color:var(--mbfg);background:var(--mbbg);font:500 13px/1 var(--sys);white-space:nowrap;overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 36px);mask-image:linear-gradient(90deg,transparent,#000 36px)}
+.mb-row{position:absolute;right:6px;top:0;height:24px;display:flex;align-items:center}
+.mb-row>*{flex:none}
+.sx{width:30px;height:22px;display:grid;place-items:center}
+.sx svg{width:16px;height:16px}
+.sx.bat{width:38px}.sx.bat svg{width:26px;height:13px}
+.clock{padding:0 8px 0 6px;font-variant-numeric:tabular-nums}
+.ours{height:22px;display:flex;align-items:center;gap:6px;padding:0 7px;margin:0 2px;border-radius:7px}
+.ours.on{background:var(--hl)}
+.ours.hov{background:var(--hls)}
+.strips{padding:14px 0 0;display:grid;gap:10px}
+.cap{display:block;font:500 10px/1 var(--mono);color:var(--cap);padding:0 12px 5px}
+
+/* ---------- placeholder art ---------- */
+.art{display:block;flex:none;width:var(--s,16px);height:var(--s,16px);border-radius:var(--r,4px);box-shadow:inset 0 0 0 .5px rgba(0,0,0,.12)}
+.art1{background:
+  radial-gradient(circle at 30% 34%, oklch(0.92 0.12 85) 0 17%, oklch(0.92 0.12 85 / 0) 18%),
+  linear-gradient(170deg, oklch(0.75 0.16 48) 0%, oklch(0.57 0.2 22) 42%, oklch(0.33 0.13 310) 100%)}
+.art2{background:
+  repeating-linear-gradient(115deg, oklch(1 0 0 / .16) 0 2px, transparent 2px 7px),
+  linear-gradient(150deg, oklch(0.8 0.11 185), oklch(0.52 0.15 245) 60%, oklch(0.32 0.1 272))}
+.s16{--s:16px;--r:4px}.s18{--s:18px;--r:4.5px}
+.paused .art{filter:grayscale(1);opacity:.45}
+.pz{display:grid;place-items:center;filter:none!important;opacity:1!important;box-shadow:inset 0 0 0 20px rgba(0,0,0,.42)}
+.pz svg{width:8px;height:8px;color:#fff}
+
+/* A — marquee title */
+.mq{display:block;max-width:132px;overflow:hidden;white-space:nowrap}
+.mq.run{-webkit-mask-image:linear-gradient(90deg,transparent,#000 6px,#000 calc(100% - 14px),transparent);mask-image:linear-gradient(90deg,transparent,#000 6px,#000 calc(100% - 14px),transparent)}
+.mq-in{display:inline-flex;gap:28px}
+.mq.run .mq-in{animation:marq 16s linear infinite}
+@keyframes marq{0%,14%{transform:translateX(0)}100%{transform:translateX(calc(-50% - 14px))}}
+.paused .mq{color:var(--mbfg2)}
+
+/* B — title · artist */
+.b-txt{max-width:156px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dim{color:var(--mbfg2)}
+.paused .b-txt{color:var(--mbfg2)}
+
+/* C — ring */
+.ring{position:relative;width:20px;height:20px}
+.ring svg{position:absolute;inset:0;width:20px;height:20px;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke:var(--mbfg);stroke-width:1.8;stroke-linecap:round}
+.ring .trk{opacity:.22}
+.ring .art{position:absolute;inset:3.5px;--s:13px;--r:50%}
+.paused .ring .prg{opacity:.4}
+.ring .pz{border-radius:50%}
+.ring .pz svg{width:6px;height:6px}
+.ours.isl{background:var(--island);--mbfg:#fff;--mbfg2:rgba(255,255,255,.6)}
+
+/* D — stacked two-line */
+.stk{display:flex;flex-direction:column;justify-content:center;gap:1px;max-width:112px;min-width:0}
+.stk b{font:600 10.5px/11px var(--sys);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.005em}
+.stk span{display:flex;align-items:center;gap:3px;font:500 9.5px/10px var(--sys);color:var(--mbfg2);white-space:nowrap;overflow:hidden}
+.stk .dv{width:10px;height:10px;flex:none}
+.stk b.fade{text-overflow:clip;-webkit-mask-image:linear-gradient(90deg,#000 78%,transparent);mask-image:linear-gradient(90deg,#000 78%,transparent)}
+.inl{display:flex;margin-left:2px}
+.inl button{width:22px;height:22px;display:grid;place-items:center;border-radius:6px;color:var(--mbfg)}
+.inl button svg{width:12px;height:12px}
+.inl button.on{background:var(--hl)}
+
+/* ---------- surfaces ---------- */
+.pop{position:absolute;top:29px;color:var(--l1);font-family:var(--sys)}
+.glass{background:var(--glass);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);
+  box-shadow:0 0 0 .5px var(--rim),inset 0 .5px 0 var(--edge),inset 0 0 0 .5px color-mix(in srgb,var(--edge) 40%,transparent),0 16px 40px -8px rgba(0,0,0,.3),0 2px 6px rgba(0,0,0,.08)}
+.meta{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}
+.meta>div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-title{font:600 13px/16px var(--sys);letter-spacing:-.005em}
+.t-title.lg{font-size:15px;line-height:19px;letter-spacing:-.01em}
+.t-sub{font:400 12px/15px var(--sys);color:var(--l2)}
+.t-ter{font:400 11px/14px var(--sys);color:var(--l2)}
+.up{font:600 10px/12px var(--sys);text-transform:uppercase;letter-spacing:.06em;color:var(--l3)}
+.prog{display:flex;align-items:center;gap:8px}
+.bar{position:relative;flex:1;height:4px;border-radius:2px;background:var(--track)}
+.bar>i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--l1)}
+.tm{font:500 10.5px/1 var(--sys);font-variant-numeric:tabular-nums;color:var(--l2);min-width:27px}
+.tm.r{text-align:right}
+.vol{display:flex;align-items:center;gap:9px;color:var(--l2)}
+.vol>svg{width:14px;height:14px;flex:none}
+.vol .bar{height:5px}
+.knob{position:absolute;top:50%;width:22px;height:14px;border-radius:7px;transform:translate(-50%,-50%);background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 1px 4px rgba(0,0,0,.28)}
+.dev{display:flex;align-items:center;gap:6px;font:500 11.5px/1 var(--sys);color:var(--l2)}
+.dev svg{width:14px;height:14px;flex:none}
+.chip{display:inline-flex;width:max-content;padding:4px 9px 4px 7px;border-radius:999px;background:var(--fill)}
+.chip .chev{width:9px;height:9px}
+.ctl3{display:flex;justify-content:center;align-items:center;gap:18px}
+.tb{width:32px;height:32px;display:grid;place-items:center;border-radius:50%;color:var(--l1)}
+.tb svg{width:18px;height:18px}
+.tb.lg{width:40px;height:40px;background:var(--fill)}
+.tb.lg svg{width:20px;height:20px}
+.sep{height:1px;background:var(--sep);margin:5px 10px}
+.open{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 13px 0 11px;border-radius:999px;background:var(--green);color:var(--green-ink);font:600 12.5px/1 var(--sys);
+  box-shadow:inset 0 .5px 0 rgba(255,255,255,.45),0 1px 2px rgba(0,0,0,.18),0 4px 10px -2px oklch(0.74 0.19 150 / .45)}
+.open svg{width:14px;height:14px}
+.eq{display:flex;gap:2px;align-items:flex-end;height:14px;flex:none}
+.eq i{width:3px;height:100%;border-radius:1.5px;background:var(--green);transform-origin:bottom;animation:eq .9s ease-in-out infinite alternate}
+.eq i:nth-child(2){animation-delay:-.3s}.eq i:nth-child(3){animation-delay:-.6s}.eq i:nth-child(4){animation-delay:-.15s}
+@keyframes eq{0%{transform:scaleY(.25)}100%{transform:scaleY(1)}}
+.cursor{position:absolute;z-index:5;pointer-events:none;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35))}
+
+/* A — compact hover + NSMenu */
+.acard{width:264px;border-radius:14px;padding:12px;display:grid;gap:10px}
+.ac-top{display:flex;gap:11px;align-items:center}
+.menu{top:27px;width:268px;border-radius:12px;padding:5px}
+.mv{padding:6px 9px}
+.mh{display:flex;gap:10px;align-items:center}
+.mi{height:24px;display:flex;align-items:center;gap:8px;padding:0 9px;border-radius:7px;font:400 13px/1 var(--sys)}
+.mi>svg{width:15px;height:15px;flex:none;color:var(--l2)}
+.mi .kb{margin-left:auto;color:var(--l3);font-size:12.5px}
+.mi svg.kb{width:10px;height:10px}
+.mi .sp{width:15px;flex:none}
+.mi.hl{background:var(--blue);color:#fff}
+.mi.hl>svg,.mi.hl .kb{color:rgba(255,255,255,.85)}
+
+/* B — art-tinted glass */
+.bcard{width:320px;border-radius:22px;overflow:hidden}
+.blurart{position:absolute;inset:-40px;filter:blur(36px) saturate(1.5);opacity:.95}
+.tint{position:absolute;inset:0;background:var(--btint)}
+.bc-in{position:relative;padding:14px;display:grid;gap:12px}
+.bc-top{display:flex;gap:13px;align-items:flex-start}
+.bc-top .art{box-shadow:0 6px 18px -4px rgba(0,0,0,.45),inset 0 0 0 .5px rgba(0,0,0,.15)}
+.bc-top .meta{padding-top:4px}
+.bc-top .chip{margin-top:9px}
+.pin{position:absolute;top:12px;right:13px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:var(--fill);color:var(--l1)}
+.pin svg{width:12px;height:12px}
+.bc-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:10px;border-top:1px solid var(--sep)}
+.kh{font:500 10.5px/1.35 var(--sys);color:var(--l2)}
+.kh kbd{font:600 10px/1 var(--sys);padding:2px 4px;border-radius:4px;background:var(--fill);color:var(--l1)}
+
+/* C — island */
+.island{top:30px;background:var(--island);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-radius:26px;
+  --l1:#fff;--l2:rgba(255,255,255,.62);--l3:rgba(255,255,255,.42);--track:rgba(255,255,255,.22);--fill:rgba(255,255,255,.13);--sep:rgba(255,255,255,.12);
+  box-shadow:0 0 0 .5px rgba(255,255,255,.1),0 20px 44px -10px rgba(0,0,0,.55)}
+.neck{position:absolute;top:22px;width:24px;height:10px;background:var(--island)}
+.ih{width:300px;padding:12px 16px 14px;display:grid;gap:11px}
+.ih-top,.ic-top{display:flex;gap:11px;align-items:center}
+.ih-foot{display:flex;justify-content:space-between;align-items:center}
+.ic{width:336px;padding:18px 18px 16px;border-radius:30px;display:grid;gap:13px}
+.ic .tb.lg{background:rgba(255,255,255,.14)}
+.ic-foot{display:flex;justify-content:space-between;align-items:center;padding-top:2px}
+
+/* D — ticket + device-first popover */
+.dcard{width:288px;border-radius:14px;overflow:hidden}
+.dc-in{padding:12px 12px 10px;display:flex;gap:11px;align-items:center}
+.dc-in .dev{margin-top:6px}
+.dc-prog{padding:0 12px 11px}
+.dpop{width:304px;border-radius:18px;padding:14px;display:grid;gap:11px}
+.dp-head{display:flex;gap:11px;align-items:center}
+.dp-ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:var(--fill);color:var(--l1)}
+.dp-ic svg{width:22px;height:22px}
+.dp-now{display:flex;gap:10px;align-items:center;padding:8px;border-radius:12px;background:var(--fill)}
+.dl{display:grid;gap:1px;margin:0 -6px}
+.dl .row{height:28px;display:flex;align-items:center;gap:9px;padding:0 8px;border-radius:8px;font:400 13px/1 var(--sys)}
+.dl .row svg{width:15px;height:15px;color:var(--l2)}
+.dl .row.hov{background:var(--fill)}
+.dl .row small{margin-left:auto;font-size:11px;color:var(--l3)}
+.dp-foot{display:flex;justify-content:flex-end}
+.dp-foot .open{width:100%;justify-content:center}
+
+/* ---------- footer table ---------- */
+.compare{margin-top:44px;border-top:1px solid var(--rule);padding-top:26px}
+.compare h2{font:700 22px/1.1 var(--disp);letter-spacing:-.015em;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--rule)}
+thead th{font:600 12px/1 var(--sys);color:var(--ink2)}
+tbody th{font-weight:600;width:170px;color:var(--ink)}
+td{color:oklch(0.35 0.01 260)}
+.verdict{margin-top:22px;padding:16px 18px;border-radius:12px;background:var(--card);box-shadow:0 0 0 1px var(--rule);font-size:14px;max-width:900px}
+.verdict b{font-weight:650}
+
+@media (prefers-reduced-motion: reduce){.mq.run .mq-in,.eq i{animation:none}}
+</style>
+</head>
+<body>
+
+<!-- SF Symbols–style glyphs -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M7 4.9v14.2a1.1 1.1 0 0 0 1.66.95l11.4-7.1a1.1 1.1 0 0 0 0-1.9L8.66 3.95A1.1 1.1 0 0 0 7 4.9z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect fill="currentColor" x="5.5" y="4" width="4.6" height="16" rx="1.3"/><rect fill="currentColor" x="13.9" y="4" width="4.6" height="16" rx="1.3"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path fill="currentColor" d="M1.5 6.3v11.4a.9.9 0 0 0 1.4.74L11 13v4.7a.9.9 0 0 0 1.4.74l9.2-5.7a.9.9 0 0 0 0-1.48l-9.2-5.7A.9.9 0 0 0 11 6.3V11L2.9 5.56A.9.9 0 0 0 1.5 6.3z"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path fill="currentColor" transform="translate(24 0) scale(-1 1)" d="M1.5 6.3v11.4a.9.9 0 0 0 1.4.74L11 13v4.7a.9.9 0 0 0 1.4.74l9.2-5.7a.9.9 0 0 0 0-1.48l-9.2-5.7A.9.9 0 0 0 11 6.3V11L2.9 5.56A.9.9 0 0 0 1.5 6.3z"/></symbol>
+  <symbol id="i-spk" viewBox="0 0 24 24"><path fill="currentColor" d="M3.2 9h3.4l4.6-3.9c.6-.5 1.5-.1 1.5.7v12.4c0 .8-.9 1.2-1.5.7L6.6 15H3.2A1.2 1.2 0 0 1 2 13.8v-3.6C2 9.5 2.5 9 3.2 9z"/></symbol>
+  <symbol id="i-spk3" viewBox="0 0 24 24"><path fill="currentColor" d="M2.2 9h3l4-3.9c.6-.5 1.4-.1 1.4.7v12.4c0 .8-.8 1.2-1.4.7l-4-3.9h-3A1.2 1.2 0 0 1 1 13.8v-3.6C1 9.5 1.5 9 2.2 9z"/><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M13.8 9.2a4 4 0 0 1 0 5.6"/><path d="M16.6 6.6a7.6 7.6 0 0 1 0 10.8"/><path d="M19.4 4a11.3 11.3 0 0 1 0 16"/></g></symbol>
+  <symbol id="i-laptop" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="5" width="16" height="11" rx="1.6"/><path d="M1.8 19h20.4"/></g></symbol>
+  <symbol id="i-iphone" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="6.5" y="2" width="11" height="20" rx="2.8"/><path d="M10.5 5h3"/></g></symbol>
+  <symbol id="i-hifi" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5.5" y="2" width="13" height="20" rx="2.8"/><circle cx="12" cy="14.5" r="3.3"/></g><circle fill="currentColor" cx="12" cy="6.6" r="1.3"/></symbol>
+  <symbol id="i-tv" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 20.5h8"/></g></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24"><circle fill="currentColor" cx="12" cy="18.4" r="1.9"/><g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M8.1 14.3a5.5 5.5 0 0 1 7.8 0"/><path d="M5 11.1a9.9 9.9 0 0 1 14 0"/><path d="M2 7.9a14.2 14.2 0 0 1 20 0"/></g></symbol>
+  <symbol id="i-bat" viewBox="0 0 28 14"><rect x="1" y="1" width="22.5" height="12" rx="3.6" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".45"/><rect x="2.8" y="2.8" width="15" height="8.4" rx="2" fill="currentColor"/><path d="M25.3 5v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".45"/></symbol>
+  <symbol id="i-cc" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4" width="19" height="7" rx="3.5"/><rect x="2.5" y="13" width="19" height="7" rx="3.5"/></g><circle fill="currentColor" cx="17.9" cy="7.5" r="2.1"/><circle fill="currentColor" cx="6.1" cy="16.5" r="2.1"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M7 18.5h10.6a4.1 4.1 0 0 0 .5-8.15A6.1 6.1 0 0 0 6.5 11a3.75 3.75 0 0 0 .5 7.5z"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M9.5 14.5 15.5 8.5M10.5 8.5h5v5"/></g></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M9 4.5 16.5 12 9 19.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.5 9.5 17.5 19.5 6.5"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path fill="currentColor" d="M8 2.5h8a1 1 0 0 1 .7 1.7L15 6v4.5l3.3 3a1 1 0 0 1-.7 1.7H13v6.3l-1 1.5-1-1.5v-6.3H6.4a1 1 0 0 1-.7-1.7l3.3-3V6L7.3 4.2A1 1 0 0 1 8 2.5z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path stroke-linecap="round" d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></g></symbol>
+</svg>
+
+<div class="wrap"><div class="inner">
+<header data-od-id="page-header">
+  <div>
+    <div class="eyebrow">macOS 26 Tahoe · Liquid Glass · Menu bar extra</div>
+    <h1 data-od-id="page-title">Now Playing for Spotify — four alternatives</h1>
+    <p class="lede">You look up from work to see what's playing. That might be on this Mac or on a Spotify Connect device. Each alternative is shown in three states: at rest, hovering and clicked, on both a light and a dark menu bar.</p>
+  </div>
+  <div class="specs">
+    <div><b>1 CSS px = 1 pt</b> · true scale</div>
+    <div>Menu bar <b>24 pt</b> · status item <b>22 pt</b></div>
+    <div>SF Pro 13 / NSStatusItem + NSPanel / NSMenu</div>
+    <div>Track, artist &amp; art are placeholders</div>
+  </div>
+</header>
+
+<div class="board" id="board" data-od-id="comparison-board">
+  <div class="colhead" data-od-id="alt-a-head">
+    <div class="ltr">A</div><div class="nm">Quiet Native</div>
+    <p>Takes up the least space: just art and a title. Controls live in a standard NSMenu, so keyboard navigation, VoiceOver and Esc work for free, the same as in system menus.</p>
+    <div class="tags"><span>≈166 pt</span><span>NSMenu</span><span>This Mac</span></div>
+  </div>
+  <div class="colhead" data-od-id="alt-b-head">
+    <div class="ltr">B</div><div class="nm">Glass Stage</div>
+    <p>The hover card does most of the work. It's tinted with the album art and has controls inline, so you can skip a track with one click. Clicking the item just pins the card for keyboard use.</p>
+    <div class="tags"><span>≈200 pt</span><span>NSPanel + glassEffect</span><span>Kitchen speaker</span></div>
+  </div>
+  <div class="colhead" data-od-id="alt-c-head">
+    <div class="ltr">C</div><div class="nm">Island</div>
+    <p>The bar shows no text, only 30 pt of art plus a progress ring you can notice from the corner of your eye. A black island unfolds from the item, like the Dynamic Island, but only when you hover over or click it.</p>
+    <div class="tags"><span>≈30 pt</span><span>Borderless NSPanel</span><span>iPhone</span></div>
+  </div>
+  <div class="colhead" data-od-id="alt-d-head">
+    <div class="ltr">D</div><div class="nm">Stacked Ticker</div>
+    <p>Title and artist are stacked in a single 24 pt bar, with a device glyph that shows remote playback even at rest. Hovering reveals transport controls in the bar itself. Clicking opens a remote organised around the playback device.</p>
+    <div class="tags"><span>≈150 pt</span><span>Inline controls</span><span>Living Room TV</span></div>
+  </div>
+</div>
+
+<section class="compare" data-od-id="comparison-table">
+  <h2>How they trade off</h2>
+  <table>
+    <thead><tr><th></th><th>A · Quiet Native</th><th>B · Glass Stage</th><th>C · Island</th><th>D · Stacked Ticker</th></tr></thead>
+    <tbody>
+      <tr><th>Bar footprint</th><td>≈166 pt (title capped at 132)</td><td>≈200 pt (156 pt text)</td><td>≈30 pt</td><td>≈150 pt; ≈218 pt while hovered</td></tr>
+      <tr><th>Visible at a glance</th><td>Title</td><td>Title · artist</td><td>Art + progress</td><td>Title, artist and whether it's playing remotely</td></tr>
+      <tr><th>Skip a track</th><td>2 clicks</td><td>Hover, then 1 click</td><td>2 clicks</td><td>Hover, then 1 click in the bar</td></tr>
+      <tr><th>Volume</th><td>Slider in menu</td><td>Slider in hover card</td><td>Slider in island; scroll over ring</td><td>Device volume in popover</td></tr>
+      <tr><th>Where the device appears</th><td>Hover card, menu row</td><td>Chip in card</td><td>Island footer</td><td>Bar glyph, hover card, popover header</td></tr>
+      <tr><th>Build notes</th><td>NSMenu with NSMenuItem.view hosting SwiftUI rows. Hover card is a non-activating NSPanel opened from an NSTrackingArea.</td><td>Floating NSPanel with SwiftUI <code>.glassEffect()</code> over a blurred <code>Image</code>. Needs a ~250 ms grace period when the pointer leaves.</td><td>Borderless NSPanel at <code>.statusBar</code> level with a custom shape and spring animation that grows from the item frame.</td><td><code>variableLength</code> status item whose button hosts a SwiftUI view that animates its width. NSPopover handles the click.</td></tr>
+      <tr><th>Risk</th><td>Marquee motion can distract, so it stops when Reduce Motion is on and after 2 loops</td><td>A hover card with controls can catch the pointer by accident while you're working</td><td>You can't read the title without hovering, and the ring needs high contrast</td><td>10.5 pt text is the smallest that stays legible, and the width change on hover shifts the items to its left</td></tr>
+    </tbody>
+  </table>
+  <div class="verdict" data-od-id="recommendation"><b>Recommendation:</b> Use D's bar item, since title, artist and device are all readable at a glance, together with B's art-tinted hover card. Then pick A's NSMenu or D's device-first popover for the click state, depending on how often you switch Connect devices.</div>
+</section>
+</div></div>
+
+<!-- ======================= TEMPLATES ======================= -->
+<!-- A -->
+<template id="t-A-rest">
+<div class="strips">
+  <div><span class="cap">Playing</span><div class="mb"><div class="ours"><i class="art art1 s16"></i><span class="mq">Glasshouse Weather</span></div></div></div>
+  <div><span class="cap">Long title · marquee inside 132 pt</span><div class="mb"><div class="ours"><i class="art art2 s16"></i><span class="mq run"><span class="mq-in"><span>Everything I Meant to Say Before the Last Train (Extended)</span><span aria-hidden="true">Everything I Meant to Say Before the Last Train (Extended)</span></span></span></div></div></div>
+  <div><span class="cap">Paused · art desaturates, title dims</span><div class="mb"><div class="ours paused"><i class="art art1 s16"></i><span class="mq">Glasshouse Weather</span></div></div></div>
+</div>
+<div class="note">NSStatusItem · variableLength</div>
+</template>
+
+<template id="t-A-hover">
+<div class="mb"><div class="ours"><i class="art art1 s16"></i><span class="mq">Glasshouse Weather</span></div></div>
+<div class="pop glass acard">
+  <div class="ac-top"><i class="art art1" style="--s:56px;--r:7px"></i>
+    <div class="meta"><div class="t-title">Glasshouse Weather</div><div class="t-sub">Mara Lindqvist</div><div class="t-ter">Small Hours, Vol. 2</div></div></div>
+  <div class="prog"><span class="tm">1:47</span><div class="bar"><i style="width:46%"></i></div><span class="tm r">−2:05</span></div>
+  <div class="dev"><svg><use href="#i-laptop"/></svg>This Mac · MacBook Pro</div>
+</div>
+<span class="cursor" data-at=".ours"></span>
+<div class="note">NSPanel · 264 pt · r14 · 400 ms dwell</div>
+</template>
+
+<template id="t-A-click">
+<div class="mb"><div class="ours on"><i class="art art1 s16"></i><span class="mq">Glasshouse Weather</span></div></div>
+<div class="pop glass menu" data-align="left">
+  <div class="mv mh"><i class="art art1" style="--s:38px;--r:6px"></i><div class="meta"><div class="t-title">Glasshouse Weather</div><div class="t-sub">Mara Lindqvist</div></div></div>
+  <div class="mv"><div class="prog"><span class="tm">1:47</span><div class="bar"><i style="width:46%"></i></div><span class="tm r">−2:05</span></div></div>
+  <div class="mv ctl3"><button class="tb"><svg><use href="#i-prev"/></svg></button><button class="tb lg"><svg><use href="#i-pause"/></svg></button><button class="tb"><svg><use href="#i-next"/></svg></button></div>
+  <div class="mv"><div class="vol"><svg><use href="#i-spk"/></svg><div class="bar"><i style="width:58%"></i><b class="knob" style="left:58%"></b></div><svg><use href="#i-spk3"/></svg></div></div>
+  <div class="sep"></div>
+  <div class="mi"><svg><use href="#i-laptop"/></svg>Playing on MacBook Pro<svg class="kb"><use href="#i-chev"/></svg></div>
+  <div class="mi hl"><svg><use href="#i-open"/></svg>Open Spotify<span class="kb">⌘O</span></div>
+  <div class="mi"><svg><use href="#i-gear"/></svg>Settings…<span class="kb">⌘,</span></div>
+  <div class="sep"></div>
+  <div class="mi"><span class="sp"></span>Quit Now Playing<span class="kb">⌘Q</span></div>
+</div>
+<span class="cursor" data-at=".mi.hl"></span>
+<div class="note">NSMenu + NSMenuItem.view · 268 pt</div>
+</template>
+
+<!-- B -->
+<template id="t-B-rest">
+<div class="strips">
+  <div><span class="cap">Playing · title · artist</span><div class="mb"><div class="ours"><i class="art art1 s18"></i><span class="b-txt">Glasshouse Weather<span class="dim"> · Mara Lindqvist</span></span></div></div></div>
+  <div><span class="cap">Long title · artist dropped first, then ellipsis</span><div class="mb"><div class="ours"><i class="art art2 s18"></i><span class="b-txt">Everything I Meant to Say Before the Last Train</span></div></div></div>
+  <div><span class="cap">Paused · pause glyph on art</span><div class="mb"><div class="ours paused"><i class="art art1 s18 pz"><svg><use href="#i-pause"/></svg></i><span class="b-txt">Glasshouse Weather<span class="dim"> · Mara Lindqvist</span></span></div></div></div>
+</div>
+<div class="note">≤ 156 pt text</div>
+</template>
+
+<template id="t-B-hover">
+<div class="mb"><div class="ours"><i class="art art1 s18"></i><span class="b-txt">Glasshouse Weather<span class="dim"> · Mara Lindqvist</span></span></div></div>
+<div class="pop glass bcard">
+  <div class="blurart art1"></div><div class="tint"></div>
+  <div class="bc-in">
+    <div class="bc-top"><i class="art art1" style="--s:96px;--r:10px"></i>
+      <div class="meta"><div class="t-title lg">Glasshouse Weather</div><div class="t-sub">Mara Lindqvist</div><div class="t-ter">Small Hours, Vol. 2</div>
+        <span class="dev chip"><svg><use href="#i-hifi"/></svg>Kitchen</span></div></div>
+    <div class="prog"><span class="tm">1:47</span><div class="bar"><i style="width:46%"></i></div><span class="tm r">−2:05</span></div>
+    <div class="ctl3"><button class="tb"><svg><use href="#i-prev"/></svg></button><button class="tb lg"><svg><use href="#i-pause"/></svg></button><button class="tb"><svg><use href="#i-next"/></svg></button></div>
+    <div class="vol"><svg><use href="#i-spk"/></svg><div class="bar"><i style="width:40%"></i><b class="knob" style="left:40%"></b></div><svg><use href="#i-spk3"/></svg></div>
+  </div>
+</div>
+<span class="cursor" data-at=".ours"></span>
+<div class="note">NSPanel · 320 pt · r22 · art-tinted glass</div>
+</template>
+
+<template id="t-B-click">
+<div class="mb"><div class="ours on"><i class="art art1 s18"></i><span class="b-txt">Glasshouse Weather<span class="dim"> · Mara Lindqvist</span></span></div></div>
+<div class="pop glass bcard">
+  <div class="blurart art1"></div><div class="tint"></div>
+  <div class="bc-in">
+    <span class="pin" title="Pinned"><svg><use href="#i-pin"/></svg></span>
+    <div class="bc-top"><i class="art art1" style="--s:96px;--r:10px"></i>
+      <div class="meta" style="padding-right:26px"><div class="t-title lg">Glasshouse Weather</div><div class="t-sub">Mara Lindqvist</div><div class="t-ter">Small Hours, Vol. 2</div>
+        <span class="dev chip"><svg><use href="#i-hifi"/></svg>Kitchen<svg class="chev"><use href="#i-chev"/></svg></span></div></div>
+    <div class="prog"><span class="tm">1:47</span><div class="bar"><i style="width:46%"></i></div><span class="tm r">−2:05</span></div>
+    <div class="ctl3"><button class="tb"><svg><use href="#i-prev"/></svg></button><button class="tb lg"><svg><use href="#i-pause"/></svg></button><button class="tb"><svg><use href="#i-next"/></svg></button></div>
+    <div class="vol"><svg><use href="#i-spk"/></svg><div class="bar"><i style="width:40%"></i><b class="knob" style="left:40%"></b></div><svg><use href="#i-spk3"/></svg></div>
+    <div class="bc-foot"><span class="kh"><kbd>space</kbd> play · <kbd>←</kbd><kbd>→</kbd> skip<br><kbd>↑</kbd><kbd>↓</kbd> volume · <kbd>esc</kbd> close</span>
+      <button class="open"><svg><use href="#i-open"/></svg>Open Spotify</button></div>
+  </div>
+</div>
+<span class="cursor" data-at=".open"></span>
+<div class="note">Click pins the card · gains key focus</div>
+</template>
+
+<!-- C -->
+<template id="t-C-rest">
+<div class="strips">
+  <div><span class="cap">Playing · ring = 46% through track</span><div class="mb"><div class="ours"><span class="ring"><svg viewBox="0 0 20 20"><circle class="trk" cx="10" cy="10" r="8.6"/><circle class="prg" cx="10" cy="10" r="8.6" stroke-dasharray="24.9 54.1"/></svg><i class="art art1"></i></span></div></div></div>
+  <div><span class="cap">Long title · nothing to truncate</span><div class="mb"><div class="ours"><span class="ring"><svg viewBox="0 0 20 20"><circle class="trk" cx="10" cy="10" r="8.6"/><circle class="prg" cx="10" cy="10" r="8.6" stroke-dasharray="7 54.1"/></svg><i class="art art2"></i></span></div></div></div>
+  <div><span class="cap">Paused · ring fades, pause on art</span><div class="mb"><div class="ours paused"><span class="ring"><svg viewBox="0 0 20 20"><circle class="trk" cx="10" cy="10" r="8.6"/><circle class="prg" cx="10" cy="10" r="8.6" stroke-dasharray="24.9 54.1"/></svg><i class="art art1 pz"><svg><use href="#i-pause"/></svg></i></span></div></div></div>
+</div>
+<div class="note">Fixed 30 pt · template-tinted ring</div>
+</template>
+
+<template id="t-C-hover">
+<div class="mb"><div class="ours isl"><span class="ring"><svg viewBox="0 0 20 20"><circle class="trk" cx="10" cy="10" r="8.6"/><circle class="prg" cx="10" cy="10" r="8.6" stroke-dasharray="24.9 54.1"/></svg><i class="art art1"></i></span></div></div>
+<div class="neck"></div>
+<div class="pop island ih">
+  <div class="ih-top"><i class="art art1" style="--s:42px;--r:9px"></i>
+    <div class="meta"><div class="t-title">Glasshouse Weather</div><div class="t-sub">Mara Lindqvist — Small Hours, Vol. 2</div></div>
+    <span class="eq"><i></i><i></i><i></i><i></i></span></div>
+  <div class="prog"><span class="tm">1:47</span><div class="bar"><i style="width:46%"></i></div><span class="tm r">−2:05</span></div>
+  <div class="ih-foot"><span class="dev"><svg><use href="#i-iphone"/></svg>Playing on iPhone</span><span class="t-ter" style="color:var(--l3)">Click for controls</span></div>
+</div>
+<span class="cursor" data-at=".ours"></span>
+<div class="note">Spring-grows from item frame · 300 pt</div>
+</template>
+
+<template id="t-C-click">
+<div class="mb"><div class="ours isl"><span class="ring"><svg viewBox="0 0 20 20"><circle class="trk" cx="10" cy="10" r="8.6"/><circle class="prg" cx="10" cy="10" r="8.6" stroke-dasharray="24.9 54.1"/></svg><i class="art art1"></i></span></div></div>
+<div class="neck"></div>
+<div class="pop island ic">
+  <div class="ic-top"><i class="art art1" style="--s:68px;--r:13px"></i>
+    <div class="meta"><div class="t-title lg">Glasshouse Weather</div><div class="t-sub">Mara Lindqvist</div><div class="t-ter">Small Hours, Vol. 2</div></div>
+    <span class="eq" style="align-self:flex-start;margin-top:4px"><i></i><i></i><i></i><i></i></span></div>
+  <div class="prog"><span class="tm">1:47</span><div class="bar"><i style="width:46%"></i></div><span class="tm r">−2:05</span></div>
+  <div class="ctl3" style="gap:26px"><button class="tb"><svg><use href="#i-prev"/></svg></button><button class="tb lg" style="width:46px;height:46px"><svg><use href="#i-pause"/></svg></button><button class="tb"><svg><use href="#i-next"/></svg></button></div>
+  <div class="vol"><svg><use href="#i-spk"/></svg><div class="bar"><i style="width:66%"></i><b class="knob" style="left:66%"></b></div><svg><use href="#i-spk3"/></svg></div>
+  <div class="ic-foot"><span class="dev chip"><svg><use href="#i-iphone"/></svg>iPhone<svg class="chev"><use href="#i-chev"/></svg></span>
+    <button class="open"><svg><use href="#i-open"/></svg>Open Spotify</button></div>
+</div>
+<span class="cursor" data-at=".tb.lg"></span>
+<div class="note">Same panel, larger detent · scroll ring = volume</div>
+</template>
+
+<!-- D -->
+<template id="t-D-rest">
+<div class="strips">
+  <div><span class="cap">Playing · device glyph = remote</span><div class="mb"><div class="ours"><i class="art art1 s18"></i><span class="stk"><b>Glasshouse Weather</b><span><svg class="dv"><use href="#i-tv"/></svg>Mara Lindqvist</span></span></div></div></div>
+  <div><span class="cap">Long title · fades out at 112 pt</span><div class="mb"><div class="ours"><i class="art art2 s18"></i><span class="stk"><b class="fade">Everything I Meant to Say Before the Last Train</b><span><svg class="dv"><use href="#i-tv"/></svg>The Overpass Choir</span></span></div></div></div>
+  <div><span class="cap">Paused · second line says so</span><div class="mb"><div class="ours paused"><i class="art art1 s18"></i><span class="stk"><b>Glasshouse Weather</b><span><svg class="dv"><use href="#i-pause"/></svg>Paused · Living Room</span></span></div></div></div>
+</div>
+<div class="note">10.5 / 9.5 pt stacked · ≤ 112 pt</div>
+</template>
+
+<template id="t-D-hover">
+<div class="mb"><div class="ours hov"><i class="art art1 s18"></i><span class="stk"><b>Glasshouse Weather</b><span><svg class="dv"><use href="#i-tv"/></svg>Mara Lindqvist</span></span>
+  <span class="inl"><button><svg><use href="#i-prev"/></svg></button><button class="on"><svg><use href="#i-pause"/></svg></button><button><svg><use href="#i-next"/></svg></button></span></div></div>
+<div class="pop glass dcard">
+  <div class="dc-in"><i class="art art1" style="--s:60px;--r:8px"></i>
+    <div class="meta"><div class="t-title">Glasshouse Weather</div><div class="t-sub">Mara Lindqvist</div><div class="t-ter">Small Hours, Vol. 2</div>
+      <span class="dev"><svg><use href="#i-tv"/></svg>Living Room TV</span></div></div>
+  <div class="dc-prog prog"><span class="tm">1:47</span><div class="bar"><i style="width:46%"></i></div><span class="tm r">−2:05</span></div>
+</div>
+<span class="cursor" data-at=".inl .on"></span>
+<div class="note">Controls slide in at once · card after 600 ms</div>
+</template>
+
+<template id="t-D-click">
+<div class="mb"><div class="ours on"><i class="art art1 s18"></i><span class="stk"><b>Glasshouse Weather</b><span><svg class="dv"><use href="#i-tv"/></svg>Mara Lindqvist</span></span></div></div>
+<div class="pop glass dpop">
+  <div class="dp-head"><span class="dp-ic"><svg><use href="#i-tv"/></svg></span>
+    <div class="meta"><div class="up">Playing on</div><div class="t-title lg">Living Room TV</div></div></div>
+  <div class="dp-now"><i class="art art1" style="--s:44px;--r:7px"></i>
+    <div class="meta"><div class="t-title">Glasshouse Weather</div><div class="t-sub">Mara Lindqvist · Small Hours, Vol. 2</div></div></div>
+  <div class="prog"><span class="tm">1:47</span><div class="bar"><i style="width:46%"></i></div><span class="tm r">−2:05</span></div>
+  <div class="ctl3"><button class="tb"><svg><use href="#i-prev"/></svg></button><button class="tb lg"><svg><use href="#i-pause"/></svg></button><button class="tb"><svg><use href="#i-next"/></svg></button></div>
+  <div class="vol"><svg><use href="#i-spk"/></svg><div class="bar"><i style="width:62%"></i><b class="knob" style="left:62%"></b></div><svg><use href="#i-spk3"/></svg></div>
+  <div class="sep" style="margin:2px 0"></div>
+  <div class="up">Switch to</div>
+  <div class="dl">
+    <div class="row"><svg><use href="#i-laptop"/></svg>This Mac<small>MacBook Pro</small></div>
+    <div class="row hov"><svg><use href="#i-iphone"/></svg>iPhone</div>
+    <div class="row"><svg><use href="#i-hifi"/></svg>Kitchen</div>
+  </div>
+  <div class="dp-foot"><button class="open"><svg><use href="#i-open"/></svg>Open Spotify</button></div>
+</div>
+<span class="cursor" data-at=".dl .hov"></span>
+<div class="note">NSPopover · 304 pt · device-first</div>
+</template>
+
+<script>
+(() => {
+  const SYS_L = '<span class="sx"><svg><use href="#i-cloud"/></svg></span>';
+  const SYS_R = '<span class="sx"><svg><use href="#i-wifi"/></svg></span>' +
+    '<span class="sx bat"><svg viewBox="0 0 28 14"><use href="#i-bat"/></svg></span>' +
+    '<span class="sx"><svg><use href="#i-cc"/></svg></span><span class="clock">Mon 9:41 AM</span>';
+  const CUR = '<svg width="14" height="22" viewBox="0 0 14 22"><path d="M1 1v16.5l4-3.7 2.8 6.4 2.6-1.1-2.7-6.3H13z" fill="#000" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>';
+  const bands = {
+    rest:  ['1 · At rest', 'playing, long title, paused · light then dark menu bar'],
+    hover: ['2 · Hover card', 'pointer rests on the item, no click'],
+    click: ['3 · Click', 'controls: play/pause, previous/next, volume, device, Open Spotify'],
+  };
+  const board = document.getElementById('board');
+  for (const s of ['rest', 'hover', 'click']) {
+    board.insertAdjacentHTML('beforeend', `<div class="band" data-od-id="band-${s}"><b>${bands[s][0]}</b><span>${bands[s][1]}</span></div>`);
+    for (const m of ['light', 'dark']) for (const a of ['A', 'B', 'C', 'D']) {
+      const sl = document.createElement('div');
+      sl.className = `slice ${m} h-${s}`;
+      sl.setAttribute('data-od-id', `alt-${a.toLowerCase()}-${s}-${m}`);
+      sl.append(document.getElementById(`t-${a}-${s}`).content.cloneNode(true));
+      sl.querySelectorAll('.mb').forEach(mb => { mb.innerHTML = '<div class="mb-row">' + SYS_L + mb.innerHTML + SYS_R + '</div>'; });
+      sl.querySelectorAll('.cursor').forEach(c => c.innerHTML = CUR);
+      const note = sl.querySelector('.note');
+      sl.insertAdjacentHTML('beforeend', `<div class="foot"><span>${note ? note.textContent : ''}</span><span class="md">${a} · ${m}</span></div>`);
+      note && note.remove();
+      board.append(sl);
+    }
+  }
+  function place() {
+    document.querySelectorAll('.slice').forEach(sl => {
+      const r0 = sl.getBoundingClientRect();
+      const it = sl.querySelector('.ours');
+      if (!it) return;
+      const ri = it.getBoundingClientRect();
+      const cx = ri.left - r0.left + ri.width / 2;
+      sl.querySelectorAll('.pop').forEach(p => {
+        const w = p.offsetWidth;
+        let x = p.dataset.align === 'left' ? ri.left - r0.left - 5 : cx - w / 2;
+        p.style.left = Math.max(8, Math.min(x, sl.clientWidth - w - 8)) + 'px';
+      });
+      sl.querySelectorAll('.neck').forEach(n => n.style.left = (cx - n.offsetWidth / 2) + 'px');
+      sl.querySelectorAll('.cursor').forEach(c => {
+        const t = sl.querySelector(c.dataset.at);
+        if (!t) return;
+        const rt = t.getBoundingClientRect();
+        c.style.left = (rt.left - r0.left + rt.width * 0.55) + 'px';
+        c.style.top = (rt.top - r0.top + rt.height * 0.5) + 'px';
+      });
+    });
+  }
+  place();
+  document.fonts && document.fonts.ready.then(place);
+})();
+</script>
+</body>
+</html>
