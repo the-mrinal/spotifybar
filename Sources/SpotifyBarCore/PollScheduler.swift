@@ -35,10 +35,10 @@ public enum PollPolicy {
         }
 
         if c.consecutiveErrors > 0 {
-            return min(60, max(10, base * pow(2, Double(c.consecutiveErrors))))
+            return min(60, max(10, 5 * pow(2, Double(c.consecutiveErrors))))
         }
-        if isPlaying, let remaining = c.trackRemainingMs {
-            return min(base, (Double(remaining) + 300) / 1000)
+        if isPlaying, let remaining = c.trackRemainingMs, remaining > 0 {
+            return min(base, max(1, (Double(remaining) + 300) / 1000))
         }
         return base
     }
@@ -70,6 +70,7 @@ public final class PollScheduler {
     }
 
     public func start() {
+        guard !running else { trigger(); return }
         running = true
         schedule(after: .zero)
     }
@@ -80,10 +81,11 @@ public final class PollScheduler {
         loop = nil
     }
 
-    public func trigger() {
+    /// Fetch soon. `after` delays the fetch, e.g. to let Spotify settle after a control action.
+    public func trigger(after delay: Duration = .zero) {
         guard running else { return }
         if fetching { pendingTrigger = true; return }
-        schedule(after: coalesceWait())
+        schedule(after: max(delay, coalesceWait()))
     }
 
     public func contextChanged() {

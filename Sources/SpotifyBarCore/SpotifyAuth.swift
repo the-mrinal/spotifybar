@@ -3,6 +3,7 @@ import Foundation
 public enum AuthError: Error, Equatable {
     case notSignedIn
     case invalidGrant
+    case keychainUnavailable
     case http(Int)
 }
 
@@ -18,6 +19,8 @@ public actor SpotifyAuth {
     private let http: HTTP
     private let now: @Sendable () -> Date
     private var refreshTask: Task<Tokens, Error>?
+    private var cached: Tokens?
+    private var generation = 0
 
     public init(clientID: String, store: TokenStore, http: @escaping HTTP = SpotifyAuth.urlSessionHTTP, now: @escaping @Sendable () -> Date = Date.init) {
         self.clientID = clientID
@@ -32,7 +35,18 @@ public actor SpotifyAuth {
         return (data, http)
     }
 
-    public var isSignedIn: Bool { store.load() != nil }
+    public var isSignedIn: Bool { (try? currentTokens()) != nil }
+
+    private func currentTokens() throws -> Tokens? {
+        if let cached { return cached }
+        cached = try store.load()
+        return cached
+    }
+
+    private func save(_ tokens: Tokens) {
+        cached = tokens
+        store.save(tokens)
+    }
 
     public func authorizeURL(verifier: String, state: String) -> URL {
         var c = URLComponents(string: "https://accounts.spotify.com/authorize")!
@@ -56,23 +70,26 @@ public actor SpotifyAuth {
             "client_id": clientID,
             "code_verifier": verifier,
         ], previousRefresh: nil)
-        store.save(tokens)
+        generation += 1
+        save(tokens)
     }
 
     public func validAccessToken() async throws -> String {
-        guard let tokens = store.load() else { throw AuthError.notSignedIn }
+        guard let tokens = try currentTokens() else { throw AuthError.notSignedIn }
         if tokens.expiresAt.timeIntervalSince(now()) > 60 { return tokens.accessToken }
         return try await refresh(tokens).accessToken
     }
 
     public func forceRefresh() async throws {
-        guard let tokens = store.load() else { throw AuthError.notSignedIn }
+        guard let tokens = try currentTokens() else { throw AuthError.notSignedIn }
         _ = try await refresh(tokens)
     }
 
     public func signOut() {
         refreshTask?.cancel()
         refreshTask = nil
+        generation += 1
+        cached = nil
         store.clear()
     }
 
@@ -84,12 +101,16 @@ public actor SpotifyAuth {
                                    previousRefresh: tokens.refreshToken)
         }
         refreshTask = task
+        let startedGeneration = generation
         defer { refreshTask = nil }
         do {
             let fresh = try await task.value
-            store.save(fresh)
+            // A sign-out (or new sign-in) during the refresh wins; don't resurrect old tokens.
+            guard generation == startedGeneration else { throw AuthError.notSignedIn }
+            save(fresh)
             return fresh
         } catch AuthError.invalidGrant {
+            cached = nil
             store.clear()
             throw AuthError.invalidGrant
         }

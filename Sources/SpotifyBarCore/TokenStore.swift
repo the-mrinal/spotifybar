@@ -14,7 +14,8 @@ public struct Tokens: Codable, Sendable, Equatable {
 }
 
 public protocol TokenStore: Sendable {
-    func load() -> Tokens?
+    /// nil when no tokens are stored; throws when the keychain can't be read right now.
+    func load() throws -> Tokens?
     func save(_ t: Tokens)
     func clear()
 }
@@ -31,12 +32,14 @@ public final class KeychainTokenStore: TokenStore {
          kSecAttrAccount as String: account]
     }
 
-    public func load() -> Tokens? {
+    public func load() throws -> Tokens? {
         var q = query
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?
-        guard SecItemCopyMatching(q as CFDictionary, &item) == errSecSuccess, let data = item as? Data else { return nil }
+        let status = SecItemCopyMatching(q as CFDictionary, &item)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess, let data = item as? Data else { throw AuthError.keychainUnavailable }
         return try? JSONDecoder().decode(Tokens.self, from: data)
     }
 
@@ -46,7 +49,6 @@ public final class KeychainTokenStore: TokenStore {
         if SecItemUpdate(query as CFDictionary, update as CFDictionary) == errSecItemNotFound {
             var add = query
             add[kSecValueData as String] = data
-            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
             SecItemAdd(add as CFDictionary, nil)
         }
     }

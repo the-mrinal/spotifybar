@@ -30,7 +30,7 @@ final class RemotePanelController {
     func open() {
         reposition()
         panel.makeKeyAndOrderFront(nil)
-        model.uiVisible = true
+        model.remoteVisible = true
         model.refreshNow()
         onVisibilityChanged(true)
 
@@ -60,7 +60,7 @@ final class RemotePanelController {
         outsideMonitor = nil
         keyMonitor = nil
         deviceRefresh?.cancel()
-        model.uiVisible = false
+        model.remoteVisible = false
         onVisibilityChanged(false)
     }
 

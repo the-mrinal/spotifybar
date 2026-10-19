@@ -5,8 +5,16 @@ import Testing
 final class MemoryTokenStore: TokenStore, @unchecked Sendable {
     private let lock = NSLock()
     private var tokens: Tokens?
+    var loads = 0
+    var failing = false
     init(_ tokens: Tokens? = nil) { self.tokens = tokens }
-    func load() -> Tokens? { lock.withLock { tokens } }
+    func load() throws -> Tokens? {
+        try lock.withLock {
+            loads += 1
+            if failing { throw AuthError.keychainUnavailable }
+            return tokens
+        }
+    }
     func save(_ t: Tokens) { lock.withLock { tokens = t } }
     func clear() { lock.withLock { tokens = nil } }
 }
@@ -55,7 +63,7 @@ private let t0 = Date(timeIntervalSince1970: 2_000_000)
         let store = MemoryTokenStore()
         let auth = SpotifyAuth(clientID: "cid", store: store, http: { await http.handle($0) }, now: { t0 })
         try await auth.exchange(code: "c0de", verifier: "v")
-        #expect(store.load() == Tokens(accessToken: "A1", refreshToken: "R1", expiresAt: t0.addingTimeInterval(3600)))
+        #expect((try? store.load()) == Tokens(accessToken: "A1", refreshToken: "R1", expiresAt: t0.addingTimeInterval(3600)))
         let body = String(decoding: await http.requests[0].httpBody!, as: UTF8.self)
         #expect(body.contains("grant_type=authorization_code"))
         #expect(body.contains("code_verifier=v"))
@@ -80,7 +88,7 @@ private let t0 = Date(timeIntervalSince1970: 2_000_000)
         #expect(reqs[0].url?.absoluteString == "https://accounts.spotify.com/api/token")
         #expect(reqs[0].httpMethod == "POST")
         #expect(String(decoding: reqs[0].httpBody!, as: UTF8.self).contains("grant_type=refresh_token"))
-        #expect(store.load() == Tokens(accessToken: "NEW", refreshToken: "R0", expiresAt: t0.addingTimeInterval(3600)))
+        #expect((try? store.load()) == Tokens(accessToken: "NEW", refreshToken: "R0", expiresAt: t0.addingTimeInterval(3600)))
     }
 
     @Test func invalidGrantSignsOut() async {
@@ -88,8 +96,27 @@ private let t0 = Date(timeIntervalSince1970: 2_000_000)
         let store = MemoryTokenStore(Tokens(accessToken: "OLD", refreshToken: "R0", expiresAt: t0))
         let auth = SpotifyAuth(clientID: "cid", store: store, http: { await http.handle($0) }, now: { t0 })
         await #expect(throws: AuthError.invalidGrant) { try await auth.validAccessToken() }
-        #expect(store.load() == nil)
+        #expect((try? store.load()) == nil)
         #expect(await auth.isSignedIn == false)
+    }
+
+    @Test func keychainErrorIsTransient() async throws {
+        let http = RecordingHTTP(status: 200, body: "{}")
+        let store = MemoryTokenStore(Tokens(accessToken: "OLD", refreshToken: "R0", expiresAt: t0.addingTimeInterval(600)))
+        store.failing = true
+        let auth = SpotifyAuth(clientID: "cid", store: store, http: { await http.handle($0) }, now: { t0 })
+        await #expect(throws: AuthError.keychainUnavailable) { try await auth.validAccessToken() }
+        store.failing = false
+        #expect(try await auth.validAccessToken() == "OLD")
+    }
+
+    @Test func cachesTokensInMemory() async throws {
+        let http = RecordingHTTP(status: 200, body: "{}")
+        let store = MemoryTokenStore(Tokens(accessToken: "OLD", refreshToken: "R0", expiresAt: t0.addingTimeInterval(600)))
+        let auth = SpotifyAuth(clientID: "cid", store: store, http: { await http.handle($0) }, now: { t0 })
+        _ = try await auth.validAccessToken()
+        _ = try await auth.validAccessToken()
+        #expect(store.loads == 1)
     }
 
     @Test func notSignedInThrows() async {

@@ -171,6 +171,9 @@ struct EmptyStateView: View {
             case .idle:
                 Text("Nothing playing").font(.system(size: 13, weight: .semibold))
                 Text("Start something on any device, or open Spotify.").font(.system(size: 12)).foregroundStyle(.secondary)
+                if let error = model.store.lastError {
+                    Text(error).font(.system(size: 11)).foregroundStyle(.red)
+                }
                 OpenSpotifyButton(model: model)
             case .active:
                 EmptyView()

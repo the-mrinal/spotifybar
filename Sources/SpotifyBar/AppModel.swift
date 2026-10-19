@@ -25,7 +25,14 @@ final class AppModel {
     @ObservationIgnored private var retryAfter: TimeInterval?
     @ObservationIgnored private var webAuthSession: ASWebAuthenticationSession?
 
-    var uiVisible = false { didSet { if uiVisible != oldValue { scheduler.contextChanged() } } }
+    /// The hover card and remote panel report separately; polling speeds up while either is showing.
+    var hoverVisible = false { didSet { visibilityChanged(oldValue || remoteVisible) } }
+    var remoteVisible = false { didSet { visibilityChanged(hoverVisible || oldValue) } }
+    var uiVisible: Bool { hoverVisible || remoteVisible }
+
+    private func visibilityChanged(_ wasVisible: Bool) {
+        if uiVisible != wasVisible { scheduler.contextChanged() }
+    }
     var clientID: String {
         didSet {
             UserDefaults.standard.set(clientID, forKey: "clientID")
@@ -43,7 +50,8 @@ final class AppModel {
         })
         store = PlaybackStore(api: api, localSpotifyRunning: { LocalSpotifyObserver.isSpotifyRunning })
         scheduler = PollScheduler(context: { [unowned self] in pollContext() }, fetch: { [unowned self] in await poll() })
-        store.onAction = { [unowned self] in scheduler.trigger() }
+        // Spotify's /me/player lags a control change by ~0.5 s; fetching sooner would flip the optimistic UI back.
+        store.onAction = { [unowned self] in scheduler.trigger(after: .milliseconds(700)) }
 
         observer.onHint = { [unowned self] hint in
             store.localHint = hint
@@ -55,8 +63,13 @@ final class AppModel {
         observer.start()
 
         configureAuth()
-        isSignedIn = tokenStore.load() != nil && box.auth != nil
-        if isSignedIn { scheduler.start() }
+        // A keychain read error (locked, access prompt denied) is not a sign-out; keep trying.
+        let stored = Result { try tokenStore.load() }
+        if case .success(nil) = stored { isSignedIn = false } else { isSignedIn = box.auth != nil }
+        if isSignedIn {
+            store.markSignedIn()
+            scheduler.start()
+        }
     }
 
     private func configureAuth() {
@@ -93,6 +106,9 @@ final class AppModel {
         switch error {
         case AuthError.invalidGrant, AuthError.notSignedIn:
             signOut()
+        case AuthError.keychainUnavailable:
+            consecutiveErrors += 1
+            retryAfter = nil
         case SpotifyAPIError.rateLimited(let after):
             consecutiveErrors += 1
             retryAfter = after
@@ -125,12 +141,15 @@ final class AppModel {
         try await auth.exchange(code: code, verifier: verifier)
         isSignedIn = true
         consecutiveErrors = 0
+        store.markSignedIn()
         scheduler.start()
     }
 
     func signOut() {
         scheduler?.stop()
         if let auth = authBox.auth { Task { await auth.signOut() } } else { tokenStore.clear() }
+        consecutiveErrors = 0
+        retryAfter = nil
         store.setSignedOut()
         isSignedIn = false
     }

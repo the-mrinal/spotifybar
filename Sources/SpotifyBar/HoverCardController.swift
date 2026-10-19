@@ -62,7 +62,7 @@ final class HoverCardController {
         guard !suppressed, overItem else { return }
         reposition()
         panel.orderFrontRegardless()
-        model.uiVisible = true
+        model.hoverVisible = true
         model.refreshNow()
     }
 
@@ -75,6 +75,6 @@ final class HoverCardController {
         guard panel.isVisible else { return }
         panel.orderOut(nil)
         overCard = false
-        model.uiVisible = false
+        model.hoverVisible = false
     }
 }

@@ -92,6 +92,25 @@ func snapshot(playing: Bool = true, progress: Int = 10_000, kind: DeviceKind = .
         #expect(store.lastError != nil)
     }
 
+    @Test func markSignedInLeavesSignedOutPhase() {
+        let store = makeStore()
+        store.markSignedIn()
+        #expect(store.phase == .idle)
+    }
+
+    @Test func controlErrorSurvivesImmediateRefresh() async throws {
+        await api.setPlayer(.success(snapshot(playing: true, at: clock.now)))
+        let store = makeStore()
+        try await store.refresh()
+        await api.setControlError(.notFound)
+        await store.togglePlay()
+        try await store.refresh()
+        #expect(store.lastError != nil)
+        clock.now = clock.now.addingTimeInterval(5)
+        try await store.refresh()
+        #expect(store.lastError == nil)
+    }
+
     @Test func playWhenIdleTargetsLastDevice() async throws {
         await api.setPlayer(.success(snapshot(playing: false, at: clock.now)))
         let store = makeStore()

@@ -19,6 +19,14 @@ private func ctx(ui: Bool = false, playing: Bool? = true, suspended: Bool = fals
         var c = ctx(); c.phase = .signedOut
         #expect(PollPolicy.nextDelay(c) == nil)
     }
+    @Test func idleErrorsBackOffFrom10s() {
+        #expect(PollPolicy.nextDelay(ctx(playing: nil, errors: 1)) == 10)
+    }
+    @Test func trackEndDelayHasFloorAndIgnoresOverrun() {
+        #expect(PollPolicy.nextDelay(ctx(remaining: 400)) == 1)
+        #expect(PollPolicy.nextDelay(ctx(remaining: 0)) == 5)
+        #expect(PollPolicy.nextDelay(ctx(remaining: -2_000)) == 5)
+    }
     @Test func schedulesTrackEndFetch() {
         #expect(PollPolicy.nextDelay(ctx(remaining: 1_200)) == 1.5)
         #expect(PollPolicy.nextDelay(ctx(remaining: 60_000)) == 5)
@@ -55,6 +63,19 @@ private func ctx(ui: Bool = false, playing: Bool? = true, suspended: Bool = fals
         try await Task.sleep(for: .milliseconds(100))
         #expect(c.n == 1)
         try await Task.sleep(for: .milliseconds(400))
+        #expect(c.n == 2)
+        s.stop()
+    }
+
+    @Test func delayedTriggerWaits() async throws {
+        let c = Counter()
+        let s = PollScheduler(policy: { _ in nil }, context: { ctx() }, fetch: { c.n += 1 }, coalesce: .milliseconds(10))
+        s.start()
+        try await Task.sleep(for: .milliseconds(50))
+        s.trigger(after: .milliseconds(300))
+        try await Task.sleep(for: .milliseconds(150))
+        #expect(c.n == 1)
+        try await Task.sleep(for: .milliseconds(300))
         #expect(c.n == 2)
         s.stop()
     }
