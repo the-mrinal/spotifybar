@@ -173,7 +173,7 @@ public enum AuthError: Error { case notSignedIn, invalidGrant }
 ```
 
 - [ ] **Step 1: Write failing tests.**
-  - `challengeMatchesRFC7636Vector`: verifier `dBjftJeZ4CVP-mJ92K27uhbUJU1p1r_wW1gFWFOEjXk` → `E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM`.
+  - `challengeMatchesRFC7636Vector`: verifier `dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk` → `E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM`.
   - `authorizeURLHasPKCEParams`: `code_challenge_method=S256`, `redirect_uri=spotifybar://callback`, and the scopes from the global constraints.
   - `refreshesWhenExpired`: with a stub HTTP client and `expiresAt = now + 30`, `validAccessToken()` makes one POST to `https://accounts.spotify.com/api/token` with `grant_type=refresh_token` and saves the new tokens, keeping the old refresh token when the response omits it.
   - `invalidGrantSignsOut`: a 400 `{"error":"invalid_grant"}` throws `.invalidGrant` and clears the store.
