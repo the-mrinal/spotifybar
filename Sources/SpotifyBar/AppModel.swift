@@ -135,6 +135,11 @@ final class AppModel {
         isSignedIn = false
     }
 
+    /// Asks the scheduler for a fetch now (coalesced), e.g. when a surface opens.
+    func refreshNow() {
+        scheduler.trigger()
+    }
+
     func openSpotify() {
         if let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") {
             NSWorkspace.shared.openApplication(at: app, configuration: NSWorkspace.OpenConfiguration())
