@@ -126,7 +126,9 @@ final class AppModel {
         let state = UUID().uuidString
         let url = await auth.authorizeURL(verifier: verifier, state: state)
         let callback: URL = try await withCheckedThrowingContinuation { continuation in
-            let session = ASWebAuthenticationSession(url: url, callback: .customScheme("spotifybar")) { url, error in
+            // AuthenticationServices calls this on a background XPC queue; @Sendable keeps it nonisolated
+            // so Swift doesn't trap on a main-actor isolation check.
+            let session = ASWebAuthenticationSession(url: url, callback: .customScheme("spotifybar")) { @Sendable url, error in
                 if let url { continuation.resume(returning: url) } else { continuation.resume(throwing: error ?? AuthError.notSignedIn) }
             }
             session.presentationContextProvider = PresentationAnchor.shared
