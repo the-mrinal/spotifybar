@@ -11,7 +11,11 @@ struct HoverCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let s = store.snapshot {
+            if let airplay = model.airPlayOnly {
+                AirPlayNowPlaying(model: model, airplay: airplay, artSize: 96)
+                chipRow
+                VolumeRow(model: model)
+            } else if let s = store.snapshot {
                 HStack(alignment: .top, spacing: 13) {
                     ArtView(url: s.track.artMedium, art: model.art, size: 96, radius: 10)
                         .shadow(color: .black.opacity(0.45), radius: 9, y: 6)
@@ -19,13 +23,13 @@ struct HoverCardView: View {
                         Text(s.track.title).font(.system(size: 15, weight: .semibold)).lineLimit(2)
                         Text(s.track.artist).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
                         Text(s.track.album).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
-                        DeviceChip(store: store).padding(.top, 8)
+                        chipRow.padding(.top, 8)
                     }
                     .padding(.top, 4)
                 }
                 ProgressRow(store: store)
                 TransportRow(store: store)
-                VolumeRow(store: store)
+                VolumeRow(model: model)
                 if let error = store.lastError {
                     Text(error).font(.system(size: 11)).foregroundStyle(.red)
                 } else if store.isStale {
@@ -41,13 +45,24 @@ struct HoverCardView: View {
         .clipShape(.rect(cornerRadius: 22))
     }
 
+    private var chipRow: some View {
+        HStack(spacing: 8) {
+            DeviceChip(model: model)
+            BatteryBadge(speaker: model.speaker)
+        }
+    }
+
+    private var artURL: URL? {
+        model.airPlayOnly != nil ? model.speaker.coverURL() : store.snapshot?.track.artSmall
+    }
+
     @ViewBuilder private var background: some View {
         if reduceTransparency {
             Rectangle().fill(.regularMaterial)
         } else {
             ZStack {
-                if let s = store.snapshot {
-                    ArtView(url: s.track.artSmall, art: model.art, size: 400, radius: 0)
+                if let url = artURL {
+                    ArtView(url: url, art: model.art, size: 400, radius: 0)
                         .blur(radius: 36)
                         .saturation(1.5)
                         .opacity(0.95)

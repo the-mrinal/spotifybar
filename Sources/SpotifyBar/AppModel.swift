@@ -2,6 +2,7 @@ import AppKit
 import AuthenticationServices
 import Observation
 import SpotifyBarCore
+import SystemConfiguration
 
 /// Holds the current auth so the API's token provider can reach it from any isolation domain.
 final class AuthBox: @unchecked Sendable {
@@ -16,6 +17,7 @@ final class AuthBox: @unchecked Sendable {
 @MainActor @Observable
 final class AppModel {
     let store: PlaybackStore
+    let speaker = SpeakerStore(api: nil)
     @ObservationIgnored let art = ArtworkCache(directory: ArtworkCache.defaultDirectory())
     @ObservationIgnored private(set) var scheduler: PollScheduler!
     @ObservationIgnored private let authBox = AuthBox()
@@ -24,6 +26,10 @@ final class AppModel {
     @ObservationIgnored private var consecutiveErrors = 0
     @ObservationIgnored private var retryAfter: TimeInterval?
     @ObservationIgnored private var webAuthSession: ASWebAuthenticationSession?
+    @ObservationIgnored private var speakerPoll: Task<Void, Never>?
+    @ObservationIgnored private let macName = SCDynamicStoreCopyComputerName(nil, nil) as String?
+    private(set) var macOutputIsAirPlay = false
+    private(set) var macVolume: Int?
 
     /// The hover card and remote panel report separately; polling speeds up while either is showing.
     var hoverVisible = false { didSet { visibilityChanged(oldValue || remoteVisible) } }
@@ -32,6 +38,7 @@ final class AppModel {
 
     private func visibilityChanged(_ wasVisible: Bool) {
         if uiVisible != wasVisible { scheduler.contextChanged() }
+        if uiVisible && !wasVisible { startSpeakerPoll() }
     }
     var clientID: String {
         didSet {
@@ -40,9 +47,17 @@ final class AppModel {
         }
     }
     private(set) var isSignedIn = false
+    /// The homelab speaker service, e.g. `http://speaker.local`. Empty turns the speaker features off.
+    var speakerURL: String {
+        didSet {
+            UserDefaults.standard.set(speakerURL, forKey: "speakerURL")
+            if speakerURL != oldValue { configureSpeaker() }
+        }
+    }
 
     init() {
         clientID = UserDefaults.standard.string(forKey: "clientID") ?? ""
+        speakerURL = UserDefaults.standard.string(forKey: "speakerURL") ?? ""
         let box = authBox
         let api = URLSessionSpotifyAPI(tokenProvider: {
             guard let auth = box.auth else { throw AuthError.notSignedIn }
@@ -58,11 +73,12 @@ final class AppModel {
             scheduler.trigger()
         }
         observer.onSuspendChanged = { [unowned self] suspended in
-            if suspended { scheduler.contextChanged() } else { scheduler.trigger() }
+            if suspended { scheduler.contextChanged() } else { scheduler.trigger(); startSpeakerPoll() }
         }
         observer.start()
 
         configureAuth()
+        configureSpeaker()
         // A keychain read error (locked, access prompt denied) is not a sign-out; keep trying.
         let stored = Result { try tokenStore.load() }
         if case .success(nil) = stored { isSignedIn = false } else { isSignedIn = box.auth != nil }
@@ -74,6 +90,103 @@ final class AppModel {
 
     private func configureAuth() {
         authBox.auth = clientID.isEmpty ? nil : SpotifyAuth(clientID: clientID, store: tokenStore)
+    }
+
+    // MARK: Homelab speaker
+
+    private func configureSpeaker() {
+        let trimmed = speakerURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let url = URL(string: trimmed.contains("://") ? trimmed : "http://\(trimmed)")
+        speaker.api = trimmed.isEmpty || url?.host() == nil ? nil : url.map { URLSessionSpeakerAPI(base: $0) }
+        startSpeakerPoll()
+    }
+
+    /// (Re)starts the speaker loop, fetching now: 3 s while a surface is open, 10 s otherwise,
+    /// 30 s while unreachable, and nothing while the Mac sleeps or is locked.
+    private func startSpeakerPoll() {
+        speakerPoll?.cancel()
+        guard speaker.api != nil else { speakerPoll = nil; return }
+        speakerPoll = Task { [weak self] in
+            while !Task.isCancelled, let self, !observer.isSuspended {
+                refreshMacOutput()
+                await speaker.refresh()
+                let interval: Int = speaker.consecutiveFailures >= 2 ? 30 : (uiVisible ? 3 : 10)
+                try? await Task.sleep(for: .seconds(interval))
+            }
+        }
+    }
+
+    private func refreshMacOutput() {
+        let airPlay = MacAudioOutput.isAirPlay
+        if airPlay != macOutputIsAirPlay { macOutputIsAirPlay = airPlay }
+        let volume = airPlay ? MacAudioOutput.volume : nil
+        if volume != macVolume { macVolume = volume }
+    }
+
+    /// Where the sound comes out. Every speaker-aware surface reads this.
+    var route: AudioRoute {
+        AudioRoute.resolve(speaker: speaker.status, spotifyDeviceName: store.snapshot?.device.name,
+                           macOutputIsAirPlay: macOutputIsAirPlay, macName: macName)
+    }
+
+    /// AirPlay from another app (YouTube Music…) while Spotify isn't playing: shown in place of the Spotify track.
+    var airPlayOnly: SpeakerStatus.AirPlay? {
+        guard let a = speaker.status?.airplay, a.session, a.playing, a.title != nil else { return nil }
+        if store.snapshot?.isPlaying == true { return nil }
+        return a
+    }
+
+    var volumeTarget: VolumeTarget { VolumeTarget(route: route) }
+
+    var volume: Int? {
+        switch volumeTarget {
+        case .spotify: store.snapshot?.device.volumePercent
+        case .speaker: speaker.status?.volume
+        case .macOutput: macVolume
+        }
+    }
+
+    var volumeEnabled: Bool {
+        switch volumeTarget {
+        case .spotify: store.snapshot?.device.supportsVolume ?? false
+        case .speaker: speaker.status?.volume != nil
+        case .macOutput: macVolume != nil
+        }
+    }
+
+    /// Names what the slider is turning, when that isn't simply Spotify.
+    var volumeCaption: String? {
+        guard let name = speaker.status?.name else { return nil }
+        switch route {
+        case .spotify: return nil
+        case .speakerDirect: return "\(name) · via homelab Spotify"
+        case .speakerAirPlay(let sender, let fromThisMac): return "\(name) · via \(fromThisMac ? "Mac" : sender) AirPlay"
+        }
+    }
+
+    func setVolume(_ percent: Int) async {
+        let clamped = min(100, max(0, percent))
+        switch volumeTarget {
+        case .spotify: await store.setVolume(clamped)
+        case .speaker: await speaker.setVolume(clamped)
+        case .macOutput:
+            MacAudioOutput.setVolume(clamped)
+            macVolume = MacAudioOutput.volume ?? clamped
+        }
+    }
+
+    /// Spotify's own volume quietly caps the speaker when it's below 100 % on the way there.
+    var spotifyVolumeCapping: Int? {
+        guard route.reachesSpeaker, let device = store.snapshot?.device, device.supportsVolume,
+              let v = device.volumePercent, v < 100 else { return nil }
+        return v
+    }
+
+    /// The homelab's own Spotify Connect device, offered when a phone AirPlays Spotify to the speaker.
+    var directSpeakerDevice: Device? {
+        guard case .speakerAirPlay(_, false) = route, store.snapshot?.isPlaying == true,
+              let own = speaker.status?.spotifyDeviceName else { return nil }
+        return store.devices.first { $0.name == own }
     }
 
     private func pollContext() -> PollContext {

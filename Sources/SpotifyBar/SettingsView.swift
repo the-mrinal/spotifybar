@@ -6,6 +6,7 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable var model: AppModel
     @State private var clientIDDraft = ""
+    @State private var speakerURLDraft = ""
     @State private var signingIn = false
     @State private var error: String?
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -45,6 +46,22 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                 }
             }
+            Section("Homelab speaker") {
+                TextField("Speaker URL", text: $speakerURLDraft, prompt: Text("e.g. http://speaker.local"))
+                    .onSubmit { model.speakerURL = speakerURLDraft.trimmingCharacters(in: .whitespacesAndNewlines) }
+                Group {
+                    if model.speakerURL.isEmpty {
+                        Text("Optional. Point this at the speaker service to control its volume, battery, EQ and sleep timer when the sound ends up there.")
+                    } else if let s = model.speaker.status {
+                        Label("\(s.name)\(s.connected ? s.battery.map { " · \($0)%" } ?? "" : " · disconnected")", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    } else {
+                        Label("Not reachable right now", systemImage: "exclamationmark.circle")
+                    }
+                }
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            }
             Section("Menu bar") {
                 Toggle("Show artist line", isOn: $showArtist)
                 Stepper(value: $maxTitleWidth, in: 80...200, step: 4) {
@@ -59,7 +76,10 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 440)
         .fixedSize()
-        .onAppear { clientIDDraft = model.clientID }
+        .onAppear {
+            clientIDDraft = model.clientID
+            speakerURLDraft = model.speakerURL
+        }
     }
 
     private func saveClientID() {

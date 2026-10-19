@@ -1,0 +1,7 @@
+{"speaker": {"name": "Xiaomi Sound Outdoor", "mac": "AC:EF:92:EA:31:83", "connected": true, "battery": 60, "charging": false, "full_in": null, "playing": true, "volume": 44, "codec": "sbc_xq", "codecs": ["sbc", "sbc_xq"], "codec_rate": {"kbps": 492, "detail": "48 kHz · dual channel · bitpool 38"}, "last_keepalive": 1792411105, "keepalive_due_in": null, "last_seen_connected": 1792418525, "link": {"adapter": "TP-Link UB500", "note": "USB dongle", "rssi": -39}},
+ "source": "airplay",
+ "spotify": {"active": true, "online": true, "last_error": null, "restarts": 6, "track": null, "route": "xiaomi", "volume": null, "device_name": "Xiaomi Soundbar", "web": {"client_id_set": true, "linked": true, "user": "Mrinal"}},
+ "airplay": {"enabled": true, "running": true, "name": "Xiaomi Soundbar AirPlay 2", "playing": true, "mode": "airplay2", "session": true, "volume": 44, "album": "Mismatched: Season 3", "artist": "Anurag Saikia", "genre": "--", "title": "Ishq Hai", "client_ip": "192.168.1.8", "client_name": "Mrinal’s iPhone", "cover_ts": 1792418496},
+ "eq": {"preset": "bass", "gains": [6, 0, 1], "custom": [0, 0, 0], "presets": ["flat", "bass", "outdoor", "vocal", "night", "custom"], "available": true},
+ "sleep": {"ends_at": null, "choices": [0, 15, 30, 45, 60, 90, 120]},
+ "events": [], "now": 1792418530}

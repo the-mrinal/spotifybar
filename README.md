@@ -13,6 +13,14 @@ A tiny native macOS menu bar app that shows what Spotify is playing, **on any de
   | ↑ ↓ | Volume |
   | Esc | Close |
 
+- **Homelab speaker (optional):** if your music usually ends up on one speaker through a homelab bridge (AirPlay 2 / Spotify Connect → Bluetooth), set **Settings → Homelab speaker** to its service URL. Then:
+  - the volume slider turns *the speaker*: the Mac's output volume when the Mac is AirPlaying to it (so the volume keys stay in step), the speaker itself when a phone or the homelab's Spotify device feeds it;
+  - the device line shows the real path ("iPhone → Xiaomi Sound Outdoor") and the speaker's battery sits quietly in the card and remote (a small dot appears in the menu bar only when it's low);
+  - AirPlay from other apps (YouTube Music…) shows its title and cover;
+  - the remote adds EQ presets, a sleep timer, "Play on the speaker directly" and a reconnect line if the Bluetooth link drops.
+
+  It speaks the JSON API of the `speaker.py` service (`/api/status`, `/api/speaker/volume`, `/api/eq`, `/api/sleep`, `/api/speaker/connect`, `/api/airplay/cover`). When the URL can't be reached, all of this hides.
+
 It's written in Swift 6 with SwiftUI and AppKit, and has no third-party dependencies. When signed out it uses about 0% CPU and about 23 MB of memory.
 
 ## Requirements
